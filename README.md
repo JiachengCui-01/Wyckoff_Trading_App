@@ -1,6 +1,6 @@
 # Wyckoff Trading
 
-AI-assisted Wyckoff trading analysis web app deployed on Vercel.
+Wyckoff trading analysis web app deployed on Vercel.
 
 ## Current App
 
