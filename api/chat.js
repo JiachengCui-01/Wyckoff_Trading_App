@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 let qaCache;
-const CHAT_VERSION = "chatbot-rag-rerank-v4";
+const CHAT_VERSION = "chatbot-rag-rerank-v5";
 const FALLBACK_ANSWER =
   "I could not find a high-confidence match in the Wyckoff knowledge base. Try asking about Springs, Selling Climax, accumulation, distribution, volume confirmation, or Phase A-E.";
 
@@ -10,7 +10,7 @@ const STOP_WORDS = new Set([
   "a", "an", "and", "are", "as", "at", "be", "by", "can", "could", "did", "do", "does",
   "for", "from", "give", "good", "had", "has", "have", "hello", "hey", "hi", "how",
   "i", "in", "into", "is", "it", "me", "my", "of", "ok", "okay", "on", "or", "please",
-  "should", "show", "tell", "test", "thanks", "thank", "the", "there", "to", "was",
+  "point", "should", "show", "tell", "test", "thanks", "thank", "the", "there", "to", "was",
   "what", "when", "where", "which", "who", "why", "with", "would", "you"
 ]);
 
@@ -62,12 +62,28 @@ const PHRASE_ALIASES = [
   ["sign of strength", ["sos"]],
   ["sign of weakness", ["sow"]],
   ["last point of support", ["lps"]],
-  ["last point of supply", ["lpsy"]]
+  ["last point of supply", ["lpsy"]],
+  ["phase a", ["phase", "phase-a"]],
+  ["phase b", ["phase", "phase-b"]],
+  ["phase c", ["phase", "phase-c"]],
+  ["phase d", ["phase", "phase-d"]],
+  ["phase e", ["phase", "phase-e"]]
 ];
 
 const TOKEN_ALIASES = new Map([
+  ["definition", "define"],
+  ["defined", "define"],
+  ["defines", "define"],
+  ["explain", "define"],
+  ["explains", "define"],
+  ["explained", "define"],
+  ["meaning", "define"],
+  ["mean", "define"],
+  ["means", "define"],
   ["detect", "identify"],
   ["find", "identify"],
+  ["distinguish", "identify"],
+  ["differentiate", "identify"],
   ["recognize", "identify"],
   ["spot", "identify"],
   ["confirm", "identify"],
@@ -86,6 +102,8 @@ const TOKEN_ALIASES = new Map([
   ["started", "start"],
   ["identify", "identify"]
 ]);
+
+const DEFINITION_TERMS = new Set(["define"]);
 
 const SMALL_TALK_RE =
   /^(hi|hello|hey|yo|thanks|thank you|ok|okay|test|testing|who are you|good morning|good afternoon|good evening)[.!?\s]*$/i;
@@ -145,6 +163,14 @@ function parseCsv(text) {
 
 function stemToken(token) {
   if (TOKEN_ALIASES.has(token)) return TOKEN_ALIASES.get(token);
+  if (
+    DOMAIN_TERMS.has(token) ||
+    METHOD_TERMS.has(token) ||
+    STRONG_DOMAIN_TERMS.has(token) ||
+    BIO_TERMS.has(token)
+  ) {
+    return token;
+  }
   if (token.length > 5 && token.endsWith("ies")) return `${token.slice(0, -3)}y`;
   if (token.length > 5 && token.endsWith("ing")) return token.slice(0, -3);
   if (token.length > 4 && token.endsWith("ed")) return token.slice(0, -2);
@@ -195,7 +221,9 @@ function phraseCoverage(queryText, itemText) {
 function inferQueryType(tokens, rawQuestion) {
   const hasMethod = tokens.some((token) => METHOD_TERMS.has(token));
   const hasBio = tokens.some((token) => BIO_TERMS.has(token));
-  const hasStrongDomain = tokens.some((token) => STRONG_DOMAIN_TERMS.has(token));
+  const hasStrongDomain =
+    tokens.some((token) => STRONG_DOMAIN_TERMS.has(token)) ||
+    /\bpoint\s+(and\s+)?figure\b/i.test(rawQuestion);
   const hasWyckoff = /\bwyckoff\b/i.test(rawQuestion);
 
   if (SMALL_TALK_RE.test(rawQuestion)) return "out-of-scope";
@@ -244,6 +272,21 @@ function scoreItem(query, item) {
   const answerCoverage = answerOverlap / qLen;
   const labelCoverage = labelOverlap / qLen;
   const phraseScore = phraseCoverage(query.text, item.questionText);
+  const rawContentWords = query.text
+    .split(/\s+/)
+    .filter((token) => token.length > 1 && !STOP_WORDS.has(token) && !DEFINITION_TERMS.has(stemToken(token)));
+  const contentWords = rawContentWords
+    .map(stemToken)
+    .filter((token) => token.length > 1 && !DEFINITION_TERMS.has(token));
+  const rawContentPhrase = rawContentWords.join(" ");
+  const contentPhrase = contentWords.join(" ");
+  const exactContentPhrase =
+    rawContentPhrase && (item.questionText.includes(rawContentPhrase) || item.answerText.includes(rawContentPhrase));
+
+  const stemmedItemText = `${item.questionText} ${item.answerText}`
+    .split(/\s+/)
+    .map(stemToken)
+    .join(" ");
 
   let score =
     questionCoverage * 0.58 +
@@ -252,11 +295,117 @@ function scoreItem(query, item) {
     phraseScore * 0.12;
 
   if (query.text.length > 12 && item.questionText.includes(query.text)) score += 0.28;
+  if (contentPhrase && contentWords.length >= 2) {
+    if (rawContentPhrase && item.questionText.includes(rawContentPhrase)) {
+      score += 0.82;
+    } else if (exactContentPhrase || stemmedItemText.includes(contentPhrase)) {
+      score += 0.56;
+    } else if (contentWords.some((token) => METHOD_TERMS.has(token) || DOMAIN_TERMS.has(token))) {
+      score *= 0.68;
+    }
+  }
   const requestedTopics = query.tokens.filter(
     (token) => METHOD_TERMS.has(token) && !GENERIC_METHOD_TERMS.has(token)
   );
 
+  if (requestedTopics.some((token) => item.questionTokens.has(token))) score += 0.12;
+  if (requestedTopics.some((token) => item.answerTokens.has(token))) score += 0.04;
+
+  if (query.tokens.includes("define") && /^(what exactly is|what is|what are)\b|define|meaning|mean/.test(item.questionText)) {
+    score += 0.22;
+  }
+  if (
+    query.tokens.includes("define") &&
+    requestedTopics.some((token) => item.questionTokens.has(token))
+  ) {
+    score += 0.2;
+  }
+  if (
+    query.tokens.includes("define") &&
+    item.questionTokens.has("define") &&
+    requestedTopics.some((token) => item.questionTokens.has(token))
+  ) {
+    score += 1.4;
+  }
+  if (
+    query.tokens.includes("define") &&
+    requestedTopics.some((token) => new RegExp(`^what (exactly )?is (a |an |the )?${token}\\b`).test(item.questionText))
+  ) {
+    score += 0.34;
+  }
+  if (
+    query.tokens.includes("define") &&
+    requestedTopics.some((token) => new RegExp(`^what (exactly )?is (a |an |the )?${token}\\b`).test(item.questionText)) &&
+    /^(what exactly is|what is|what are)\b/.test(item.questionText)
+  ) {
+    score += 0.5;
+  }
+  if (
+    query.tokens.includes("define") &&
+    requestedTopics.length === 1 &&
+    contentWords.length <= 1 &&
+    new RegExp(`^what (exactly )?is (a |an |the )?${requestedTopics[0]}\\??$`).test(item.questionText)
+  ) {
+    score += 0.72;
+  }
+  for (const phaseToken of ["phase-a", "phase-b", "phase-c", "phase-d", "phase-e"]) {
+    if (!query.tokens.includes(phaseToken)) continue;
+    const phaseText = phaseToken.replace("-", " ");
+    if (item.questionText.includes(phaseText) && /^(what happens|what is|why is)\b/.test(item.questionText)) {
+      score += 0.46;
+    }
+    for (const otherPhase of ["phase a", "phase b", "phase c", "phase d", "phase e"]) {
+      if (otherPhase !== phaseText && item.questionText.includes(otherPhase)) score *= 0.72;
+    }
+  }
+  if (
+    query.tokens.includes("define") &&
+    ["sos", "sow", "lps", "lpsy"].some((token) => query.tokens.includes(token) && item.questionText.includes(`(${token})`))
+  ) {
+    score += 1.5;
+  }
+  if (
+    query.tokens.includes("define") &&
+    /^(what does it mean if|what happens if|why|how|should|can)\b/.test(item.questionText)
+  ) {
+    score *= 0.08;
+  }
+  if (
+    query.tokens.includes("define") &&
+    !item.questionTokens.has("define") &&
+    /^(what timing|what volume|how|why|when|should|can)\b/.test(item.questionText)
+  ) {
+    score *= 0.2;
+  }
+  if (
+    query.tokens.includes("define") &&
+    query.tokens.length <= 2 &&
+    /\b(volume|valid|entry|timing|within|multiple|differentiate|distinguish|characteristics?)\b/.test(item.questionText)
+  ) {
+    score *= 0.72;
+  }
+  if (
+    query.tokens.includes("define") &&
+    contentWords.length <= 1 &&
+    /\b(volume|valid|entry|timing|within|multiple|differentiate|distinguish|characteristics?)\b/.test(item.questionText)
+  ) {
+    score *= 0.18;
+  }
   if (query.tokens.includes("identify") && item.questionTokens.has("identify")) score += 0.24;
+  if (
+    query.tokens.includes("identify") &&
+    requestedTopics.some((token) => item.questionTokens.has(token)) &&
+    /\b(distinguish|differentiate|identify|recognize|valid|genuine|signal|characteristics?)\b/.test(item.questionText)
+  ) {
+    score += 0.22;
+  }
+  if (
+    query.tokens.includes("identify") &&
+    query.tokens.includes("spring") &&
+    /\bgenuine spring\b|\bvalid spring\b/.test(item.questionText)
+  ) {
+    score += 0.34;
+  }
   if (
     query.tokens.includes("identify") &&
     item.questionTokens.has("identify") &&
@@ -285,23 +434,45 @@ function scoreItem(query, item) {
     score *= 0.72;
   }
 
-  return Math.max(0, Math.min(1, score));
+  return Math.max(0, score);
 }
 
-function formatResult(question, matches) {
+function formatResult(question, query, matches) {
   const best = matches[0];
-  if (!best || best.score < 0.34) {
+  const requestedTopics = query.tokens.filter(
+    (token) => METHOD_TERMS.has(token) && !GENERIC_METHOD_TERMS.has(token) && !DEFINITION_TERMS.has(token)
+  );
+  const canUseBestEffort =
+    best &&
+    best.score >= 0.2 &&
+    requestedTopics.length > 0 &&
+    requestedTopics.some((token) => best.questionTokens.has(token) || best.answerTokens.has(token));
+
+  if (!best || (best.score < 0.34 && !canUseBestEffort)) {
     return { answer: FALLBACK_ANSWER, confidence: 0.25, context: [] };
   }
 
   let answer = best.answer;
-  if (matches[1] && matches[1].score >= 0.34 && matches[1].score > best.score * 0.9) {
+  const secondSharesTopic =
+    !requestedTopics.length ||
+    requestedTopics.every((token) => matches[1]?.questionTokens.has(token) || matches[1]?.answerTokens.has(token));
+  if (
+    !query.tokens.includes("define") &&
+    matches[1] &&
+    matches[1].score >= 0.34 &&
+    matches[1].score > best.score * 0.9 &&
+    secondSharesTopic
+  ) {
     answer = mergeAnswerText(answer, matches[1].answer);
   }
 
   if (/\b(entry|buy|trade|signal|risk|stop)\b/i.test(question)) {
     answer +=
       "\n\nTrading note: treat this as methodology guidance, then confirm with price structure, volume behavior, risk limits, and broader market context.";
+  }
+
+  if (best.score < 0.34) {
+    answer = `Closest match from the Wyckoff knowledge base:\n\n${answer}`;
   }
 
   return {
@@ -317,6 +488,35 @@ function mergeAnswerText(primary, secondary) {
   if (!second) return first;
   if (first.toLowerCase().includes(second.toLowerCase())) return first;
   return `${first}\n\n${second}`;
+}
+
+function findPinnedDefinitionMatch(query, qa) {
+  if (!query.tokens.includes("define")) return null;
+  const text = query.text;
+  const startsWith = (prefix) => qa.find((item) => item.questionText.startsWith(prefix));
+  const includesQuestion = (value) => qa.find((item) => item.questionText.includes(value));
+
+  if (/\bsos\b/.test(text)) return includesQuestion("sign of strength (sos)");
+  if (/\bsow\b/.test(text)) return includesQuestion("sign of weakness (sow)");
+  if (/\blps\b/.test(text)) return includesQuestion("last point of support (lps)");
+  if (/\blpsy\b/.test(text)) return includesQuestion("last point of supply (lpsy)");
+
+  for (const phase of ["a", "b", "c", "d", "e"]) {
+    if (new RegExp(`\\bphase\\s+${phase}\\b`).test(text)) {
+      return startsWith(`what happens in phase ${phase}`) || includesQuestion(`phase ${phase}`);
+    }
+  }
+
+  if (text.includes("failed spring")) return includesQuestion("failed spring");
+  if (text.includes("spring bar")) return startsWith("what is a spring bar");
+  if (text.includes("selling climax")) return startsWith("what is the selling climax") || includesQuestion("selling climax");
+  if (text.includes("buying climax")) return startsWith("what is a buying climax") || includesQuestion("buying climax");
+  if (text.includes("upthrust")) return startsWith("what is an upthrust") || startsWith("what is upthrust");
+  if (text.includes("accumulation")) return qa.find((item) => item.questionTokens.has("define") && item.questionTokens.has("accumulation"));
+  if (text.includes("distribution")) return startsWith("what is distribution");
+  if (/\bspring\b/.test(text)) return startsWith("what is a spring");
+
+  return null;
 }
 
 export default async function handler(req, res) {
@@ -335,10 +535,18 @@ export default async function handler(req, res) {
 
     if (!question) return res.status(400).json({ error: "Question is required" });
 
+    const queryText = normalizeText(question);
+    const queryTokens = tokenize(question);
+    const asksForDefinition =
+      /^what (is|are)\b/.test(queryText) &&
+      (queryTokens.some((token) => DOMAIN_TERMS.has(token) || METHOD_TERMS.has(token)) ||
+        /\bpoint\s+(and\s+)?figure\b/i.test(question));
+    if (asksForDefinition && !queryTokens.includes("define")) queryTokens.push("define");
+
     const query = {
-      text: normalizeText(question),
-      tokens: tokenize(question),
-      type: inferQueryType(tokenize(question), question)
+      text: queryText,
+      tokens: queryTokens,
+      type: inferQueryType(queryTokens, question)
     };
 
     if (query.type === "out-of-scope") {
@@ -351,13 +559,14 @@ export default async function handler(req, res) {
     }
 
     const qa = await loadQa();
+    const pinnedMatch = findPinnedDefinitionMatch(query, qa);
     const matches = qa
-      .map((item) => ({ ...item, score: scoreItem(query, item) }))
+      .map((item) => ({ ...item, score: item === pinnedMatch ? 10 : scoreItem(query, item) }))
       .filter((item) => item.score > 0)
       .sort((a, b) => b.score - a.score)
       .slice(0, 6);
 
-    const result = formatResult(question, matches);
+    const result = formatResult(question, query, matches);
     return res.status(200).json({
       ...result,
       version: CHAT_VERSION,

@@ -1441,7 +1441,7 @@
         addMessage("bot", "Analyzing Wyckoff knowledge base...");
         const pending = messages.lastElementChild;
         try {
-          const response = await fetch("/api/chat?v=chatbot-rag-rerank-v4", {
+          const response = await fetch("/api/chat?v=chatbot-rag-rerank-v5", {
             method: "POST",
             cache: "no-store",
             headers: { "Content-Type": "application/json" },
