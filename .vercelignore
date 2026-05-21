@@ -1,10 +1,7 @@
 .vercel
 node_modules
 __pycache__
-models
-*.py
-*.ipynb
-*.pdf
-demo.html
 .codex_pdf_notes.txt
 .vercel-dev.*.log
+preview-*.log
+preview-*.err.log
