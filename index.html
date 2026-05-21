@@ -1388,22 +1388,12 @@
       groupSelect.addEventListener("change", updateTickers);
       updateTickers();
 
-      function addMessage(role, content, context = []) {
+      function addMessage(role, content) {
         chatWelcome.style.display = "none";
         messages.classList.add("show");
         const node = document.createElement("div");
         node.className = `message ${role}`;
         node.textContent = role === "bot" ? cleanBotAnswer(content) : content;
-        if (context.length) {
-          const contextNode = document.createElement("div");
-          contextNode.className = "context";
-          context.forEach((item) => {
-            const detail = document.createElement("details");
-            detail.innerHTML = `<summary>${item.label} - ${Math.round(item.similarity * 100)}% match</summary><p>${item.question}</p>`;
-            contextNode.appendChild(detail);
-          });
-          node.appendChild(contextNode);
-        }
         messages.appendChild(node);
         node.scrollIntoView({ behavior: "smooth", block: "end" });
       }
@@ -1454,7 +1444,7 @@
             addMessage("bot", chatFallbackReply);
             return;
           }
-          addMessage("bot", data.answer, data.context || []);
+          addMessage("bot", data.answer);
         } catch (error) {
           pending.textContent = `Chat service error: ${error.message}`;
         }
