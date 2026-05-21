@@ -1,0 +1,12 @@
+{
+  "name": "wyckoff-trader-app",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lint": "node --check api/chat.js && node --check api/analyze.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

@@ -1,0 +1,8 @@
+.vercel
+node_modules
+.vercel-dev.*.log
+.codex_pdf_notes.txt
+__pycache__/
+*.pyc
+preview-*.log
+preview-*.err.log

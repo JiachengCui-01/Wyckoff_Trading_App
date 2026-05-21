@@ -1,0 +1,1099 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KWeaver Engineering Insight Agent</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --text: #111827;
+      --sub: #667085;
+      --blue: #0a84ff;
+      --purple: #7f5af0;
+      --green: #30d158;
+      --orange: #ff9f0a;
+      --glass: rgba(255, 255, 255, 0.66);
+      --stroke: rgba(255, 255, 255, 0.78);
+      --shadow: 0 24px 70px rgba(31, 41, 55, 0.12);
+      --inner: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+    }
+
+    body {
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 10% 12%, rgba(10, 132, 255, 0.22), transparent 28%),
+        radial-gradient(circle at 82% 18%, rgba(127, 90, 240, 0.2), transparent 30%),
+        radial-gradient(circle at 68% 86%, rgba(48, 209, 88, 0.14), transparent 28%),
+        linear-gradient(180deg, #f8f9fc, #edf1f8);
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(255, 255, 255, 0.16) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.14) 1px, transparent 1px);
+      background-size: 44px 44px;
+      mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.38), transparent 72%);
+    }
+
+    .shell {
+      width: min(1360px, 100%);
+      min-height: 100vh;
+      margin: 0 auto;
+      padding: 24px 24px 104px;
+    }
+
+    .glass {
+      background: var(--glass);
+      border: 1px solid var(--stroke);
+      box-shadow: var(--shadow), var(--inner);
+      backdrop-filter: blur(28px) saturate(1.35);
+      -webkit-backdrop-filter: blur(28px) saturate(1.35);
+    }
+
+    .topbar {
+      border-radius: 34px;
+      padding: 18px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 22px;
+    }
+
+    .brand {
+      display: flex;
+      gap: 14px;
+      align-items: center;
+    }
+
+    .app-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: 16px;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      font-size: 24px;
+      font-weight: 900;
+      background: linear-gradient(145deg, #0a84ff, #7f5af0);
+      box-shadow: 0 14px 30px rgba(10, 132, 255, 0.25);
+    }
+
+    .brand h1 {
+      font-size: 21px;
+      letter-spacing: -0.3px;
+    }
+
+    .brand p {
+      margin-top: 3px;
+      color: var(--sub);
+      font-size: 13px;
+    }
+
+    .badge {
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.72);
+      color: #0a62cc;
+      font-size: 13px;
+      font-weight: 800;
+      border: 1px solid rgba(255, 255, 255, 0.85);
+    }
+
+    .page {
+      display: none;
+      animation: fade 0.24s ease;
+    }
+
+    .page.active {
+      display: block;
+    }
+
+    @keyframes fade {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .hero {
+      border-radius: 44px;
+      padding: 44px;
+      margin-bottom: 22px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      width: 360px;
+      height: 360px;
+      border-radius: 50%;
+      right: -120px;
+      top: -140px;
+      background: radial-gradient(circle, rgba(10, 132, 255, 0.22), transparent 62%);
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+      padding: 9px 13px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.74);
+      color: #0a84ff;
+      font-size: 13px;
+      font-weight: 800;
+      margin-bottom: 18px;
+      border: 1px solid rgba(255, 255, 255, 0.82);
+    }
+
+    .spark {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 0 6px rgba(48, 209, 88, 0.13);
+    }
+
+    .hero h2 {
+      font-size: clamp(34px, 4vw, 58px);
+      line-height: 1.08;
+      letter-spacing: -1.8px;
+      max-width: 980px;
+      margin-bottom: 18px;
+    }
+
+    .hero p {
+      color: var(--sub);
+      max-width: 920px;
+      line-height: 1.85;
+      font-size: 17px;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 22px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 18px;
+    }
+
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 16px;
+    }
+
+    .card,
+    .panel {
+      border-radius: 34px;
+      padding: 26px;
+    }
+
+    .panel {
+      border-radius: 38px;
+    }
+
+    .section-title {
+      font-size: 23px;
+      letter-spacing: -0.5px;
+      margin-bottom: 12px;
+    }
+
+    .section-copy {
+      color: var(--sub);
+      line-height: 1.82;
+      font-size: 15px;
+    }
+
+    .value-list {
+      display: grid;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .value-item {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      padding: 14px;
+      border-radius: 22px;
+      background: rgba(255, 255, 255, 0.58);
+    }
+
+    .check {
+      min-width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: rgba(48, 209, 88, 0.18);
+      color: #15803d;
+      font-weight: 900;
+    }
+
+    .value-item b {
+      display: block;
+      font-size: 14px;
+      margin-bottom: 3px;
+    }
+
+    .value-item span {
+      color: var(--sub);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .main-workspace {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 22px;
+      align-items: start;
+    }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .panel-header p {
+      color: var(--sub);
+      line-height: 1.7;
+      font-size: 14px;
+      margin-top: 6px;
+    }
+
+    .mini-badge {
+      padding: 8px 11px;
+      border-radius: 999px;
+      background: rgba(10, 132, 255, 0.1);
+      color: #0a62cc;
+      font-size: 12px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .side-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .side-item {
+      border-radius: 24px;
+      padding: 16px;
+      background: rgba(255, 255, 255, 0.58);
+      border: 1px solid rgba(255, 255, 255, 0.72);
+    }
+
+    .side-item b {
+      display: block;
+      font-size: 14px;
+      margin-bottom: 5px;
+    }
+
+    .side-item span {
+      color: var(--sub);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .input-wrap {
+      border-radius: 28px;
+      background: rgba(255, 255, 255, 0.66);
+      border: 1px solid rgba(255, 255, 255, 0.78);
+      padding: 18px;
+      margin: 18px 0 16px;
+    }
+
+    textarea {
+      width: 100%;
+      border: none;
+      outline: none;
+      resize: none;
+      min-height: 108px;
+      background: transparent;
+      color: var(--text);
+      font: inherit;
+      font-size: 16px;
+      line-height: 1.65;
+    }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    button {
+      border: none;
+      cursor: pointer;
+      border-radius: 18px;
+      padding: 13px 18px;
+      font-weight: 900;
+      font-size: 14px;
+      color: #fff;
+      background: linear-gradient(135deg, #0a84ff, #2563eb);
+      box-shadow: 0 14px 26px rgba(10, 132, 255, 0.24);
+      transition: 0.18s;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+    }
+
+    .ghost {
+      background: rgba(255, 255, 255, 0.72);
+      color: #0a62cc;
+      box-shadow: none;
+      border: 1px solid rgba(255, 255, 255, 0.85);
+    }
+
+    .demo-output {
+      display: none;
+      margin-top: 18px;
+    }
+
+    .demo-output.show {
+      display: block;
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .flow-step,
+    .result-box,
+    .metric-row,
+    .trace-item {
+      border-radius: 24px;
+      padding: 16px;
+      background: rgba(255, 255, 255, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.72);
+    }
+
+    .flow-step small {
+      color: #8a94a6;
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .flow-step b {
+      display: block;
+      margin-top: 5px;
+      font-size: 13px;
+    }
+
+    .result-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .result-box h4 {
+      font-size: 15px;
+      margin-bottom: 8px;
+    }
+
+    .result-box p {
+      color: var(--sub);
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    .wide {
+      grid-column: 1 / -1;
+    }
+
+    .trace-block {
+      margin-top: 16px;
+    }
+
+    .trace-block h3 {
+      font-size: 18px;
+      margin-bottom: 12px;
+    }
+
+    .timeline {
+      display: grid;
+      gap: 10px;
+    }
+
+    .trace-item {
+      display: grid;
+      grid-template-columns: 38px 1fr;
+      gap: 12px;
+      align-items: start;
+    }
+
+    .trace-dot {
+      width: 32px;
+      height: 32px;
+      border-radius: 13px;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      font-weight: 900;
+      background: linear-gradient(135deg, #0a84ff, #7f5af0);
+    }
+
+    .trace-item b {
+      font-size: 14px;
+    }
+
+    .trace-item p {
+      margin-top: 4px;
+      color: var(--sub);
+      font-size: 13px;
+      line-height: 1.58;
+    }
+
+    .tech-card {
+      border-radius: 30px;
+      padding: 22px;
+      min-height: 155px;
+      transition: 0.22s;
+    }
+
+    .tech-card:hover {
+      transform: translateY(-4px);
+    }
+
+    .tech-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 15px;
+      display: grid;
+      place-items: center;
+      margin-bottom: 16px;
+      color: #fff;
+      font-weight: 900;
+      box-shadow: 0 12px 26px rgba(0, 0, 0, 0.12);
+    }
+
+    .blue {
+      background: linear-gradient(135deg, #0a84ff, #64d2ff);
+    }
+
+    .purple {
+      background: linear-gradient(135deg, #7f5af0, #bf5af2);
+    }
+
+    .green {
+      background: linear-gradient(135deg, #30d158, #63e6be);
+    }
+
+    .orange {
+      background: linear-gradient(135deg, #ff9f0a, #ffd60a);
+    }
+
+    .tech-card h3 {
+      font-size: 17px;
+      margin-bottom: 8px;
+    }
+
+    .tech-card p {
+      color: var(--sub);
+      font-size: 13px;
+      line-height: 1.65;
+    }
+
+    .metric-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .metric-row {
+      display: grid;
+      grid-template-columns: 190px 1fr;
+      gap: 14px;
+    }
+
+    .metric-row b {
+      font-size: 14px;
+    }
+
+    .metric-row span {
+      font-size: 13px;
+      color: var(--sub);
+      line-height: 1.55;
+    }
+
+    .dock {
+      position: fixed;
+      left: 50%;
+      transform: translateX(-50%);
+      bottom: 22px;
+      z-index: 20;
+      width: min(720px, calc(100% - 28px));
+      padding: 10px;
+      border-radius: 32px;
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+    }
+
+    .dock button {
+      height: 58px;
+      padding: 0 8px;
+      border-radius: 23px;
+      display: grid;
+      place-items: center;
+      gap: 2px;
+      background: rgba(255, 255, 255, 0.74);
+      color: #111827;
+      box-shadow: none;
+      border: 1px solid rgba(255, 255, 255, 0.85);
+      font-size: 12px;
+    }
+
+    .dock .icon {
+      font-size: 20px;
+      line-height: 1;
+    }
+
+    .dock .txt {
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .dock button.active {
+      background: #111827;
+      color: #fff;
+    }
+
+    @media (max-width: 1100px) {
+      .grid-2,
+      .main-workspace {
+        grid-template-columns: 1fr;
+      }
+
+      .grid-3 {
+        grid-template-columns: 1fr;
+      }
+
+      .grid-4 {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .flow {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 700px) {
+      .shell {
+        padding: 14px 14px 104px;
+      }
+
+      .topbar,
+      .hero,
+      .panel,
+      .card {
+        border-radius: 28px;
+        padding: 22px;
+      }
+
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 14px;
+      }
+
+      .grid-4,
+      .result-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .wide {
+        grid-column: auto;
+      }
+
+      .metric-row {
+        grid-template-columns: 1fr;
+      }
+
+      .dock {
+        width: min(560px, calc(100% - 18px));
+        gap: 5px;
+      }
+
+      .dock button {
+        height: 54px;
+        border-radius: 18px;
+      }
+
+      .dock .txt {
+        font-size: 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar glass">
+      <div class="brand">
+        <div class="app-icon">K</div>
+        <div>
+          <h1>KWeaver Engineering Insight Agent</h1>
+          <p id="pageSubtitle">产品介绍 · 增强型数据中台 · AI 数字员工</p>
+        </div>
+      </div>
+      <div class="badge" id="pageBadge">Overview</div>
+    </header>
+
+    <section id="intro" class="page active">
+      <div class="hero glass">
+        <div class="eyebrow">
+          <span class="spark"></span>
+          基于爱数 KWeaver 增强型数据中台解决方案
+        </div>
+        <h2>让企业数据从“被存储”升级为“被决策”</h2>
+        <p>
+          这不是一个普通 ChatBot，而是一名面向制造业研发团队的 AI 数字员工。它通过 RAG + Skills + Agent，把分散在 PLM、ERP、BOM、Jira 和测试报告中的企业私域数据，转化为可检索、可推理、可执行、可追溯的研发决策能力。
+        </p>
+      </div>
+      <div class="grid-2">
+        <div class="card glass">
+          <h2 class="section-title">产品定位与核心思路</h2>
+          <p class="section-copy">
+            在制造企业中，当出现“A系列电机温升异常”这类研发问题时，工程师往往要在多个系统之间切换，人工查设计版本、材料变更、历史缺陷和测试报告。该产品的核心思路是将“人找数据”变成“AI 主动理解问题并推动决策”：先理解企业数据，再通过 RAG 找到真实证据，随后由 Skills 组织业务能力，最后由 Agent 完成分析、判断和执行闭环。
+          </p>
+        </div>
+        <div class="card glass">
+          <h2 class="section-title">为客户带来的价值</h2>
+          <div class="value-list">
+            <div class="value-item">
+              <span class="check">✓</span>
+              <div>
+                <b>降低专家依赖</b>
+                <span>把资深工程师经验沉淀为可复用的企业知识与业务流程。</span>
+              </div>
+            </div>
+            <div class="value-item">
+              <span class="check">✓</span>
+              <div>
+                <b>提升知识复用</b>
+                <span>让历史测试报告、缺陷记录和复盘经验真正参与新问题处理。</span>
+              </div>
+            </div>
+            <div class="value-item">
+              <span class="check">✓</span>
+              <div>
+                <b>缩短处理周期</b>
+                <span>减少工程师在多个系统之间切换和查找信息的时间。</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="demo" class="page">
+      <div class="main-workspace">
+        <section class="panel glass">
+          <div class="panel-header">
+            <div>
+              <h2 class="section-title">Agent 智能分析</h2>
+              <p>主要功能集中在这里：点击启动后，同步展示分析结果、执行动作和 Trace AI 全链路追溯。</p>
+            </div>
+            <span class="mini-badge">Main Demo</span>
+          </div>
+
+          <div class="grid-3" style="margin-bottom: 18px">
+            <div class="side-item">
+              <b>Data Sources</b>
+              <span>PLM · ERP · BOM · Jira · 测试报告</span>
+            </div>
+            <div class="side-item">
+              <b>Active Skills</b>
+              <span>RootCause · Risk · Execution</span>
+            </div>
+            <div class="side-item">
+              <b>Action Mode</b>
+              <span>低风险自动执行，高风险人工确认</span>
+            </div>
+          </div>
+
+          <div class="input-wrap">
+            <textarea>请分析 A系列电机温升异常原因，并给出处理建议。</textarea>
+            <div class="actions">
+              <button type="button" onclick="runDemo()">启动分析</button>
+              <button type="button" class="ghost" onclick="showPage('metrics')">查看量化指标</button>
+            </div>
+          </div>
+
+          <div class="demo-output" id="output">
+            <div class="flow">
+              <div class="flow-step">
+                <small>STEP 1</small>
+                <b>OCR + Chunking</b>
+              </div>
+              <div class="flow-step">
+                <small>STEP 2</small>
+                <b>Hybrid Search</b>
+              </div>
+              <div class="flow-step">
+                <small>STEP 3</small>
+                <b>Reranker</b>
+              </div>
+              <div class="flow-step">
+                <small>STEP 4</small>
+                <b>LLM Reasoning</b>
+              </div>
+              <div class="flow-step">
+                <small>STEP 5</small>
+                <b>Skills + Agent</b>
+              </div>
+            </div>
+
+            <div class="result-grid">
+              <div class="result-box">
+                <h4>Root Cause</h4>
+                <p>M27 材料批次异常与散热结构设计不足是优先排查方向。</p>
+              </div>
+              <div class="result-box">
+                <h4>Activated Skills</h4>
+                <p>RootCauseAnalysisSkill、RiskAssessmentSkill、ExecutionSkill。</p>
+              </div>
+              <div class="result-box wide">
+                <h4>Execution</h4>
+                <p>系统生成研发任务、异常复盘报告，并通知研发与质量负责人。高风险动作仍需人工审批。</p>
+              </div>
+            </div>
+
+            <div class="trace-block">
+              <h3>Trace AI · 本次任务追溯</h3>
+              <div class="timeline">
+                <div class="trace-item">
+                  <div class="trace-dot">1</div>
+                  <div>
+                    <b>知识检索</b>
+                    <p>trace_20260514_0001：召回测试报告、BOM 变更记录、Jira 历史缺陷和质量复盘文档。</p>
+                  </div>
+                </div>
+                <div class="trace-item">
+                  <div class="trace-dot">2</div>
+                  <div>
+                    <b>Skill 调用</b>
+                    <p>调用 RootCauseAnalysisSkill、RiskAssessmentSkill 和 ExecutionSkill。</p>
+                  </div>
+                </div>
+                <div class="trace-item">
+                  <div class="trace-dot">3</div>
+                  <div>
+                    <b>Agent 推理</b>
+                    <p>基于企业证据生成根因判断、风险等级和处理建议。</p>
+                  </div>
+                </div>
+                <div class="trace-item">
+                  <div class="trace-dot">4</div>
+                  <div>
+                    <b>工具执行与审计</b>
+                    <p>创建 Jira 任务、生成复盘报告、通知负责人，并写入审计日志。</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <aside class="panel glass">
+          <div class="panel-header">
+            <div>
+              <h2 class="section-title">当前执行链路</h2>
+              <p>展示从企业知识到业务动作的闭环，而不是停留在问答。</p>
+            </div>
+          </div>
+          <div class="side-list">
+            <div class="side-item">
+              <b>知识理解</b>
+              <span>OCR、Chunking、Embedding 将非结构化资料变成可检索知识。</span>
+            </div>
+            <div class="side-item">
+              <b>RAG 认知</b>
+              <span>BM25 + Vector Search + Reranker 找到真实证据，降低幻觉。</span>
+            </div>
+            <div class="side-item">
+              <b>Skills 执行</b>
+              <span>通过标准业务技能完成根因分析、风险判断和任务执行。</span>
+            </div>
+            <div class="side-item">
+              <b>Trace 留痕</b>
+              <span>点击启动分析后，Trace 记录会和分析结果一起出现。</span>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <section id="trace" class="page">
+      <div class="hero glass">
+        <div class="eyebrow">
+          <span class="spark"></span>
+          Trace AI · 全链路追溯
+        </div>
+        <h2>每一次 AI 决策，都可以被解释、回放和审计</h2>
+        <p>Trace 页面用于单独展示企业级可信治理能力。系统会为每次任务生成 trace_id，记录知识检索、Reranker、Skill 路由、工具执行和审计留痕。</p>
+      </div>
+      <div class="main-workspace">
+        <section class="panel glass">
+          <div class="panel-header">
+            <div>
+              <h2 class="section-title">Trace Timeline</h2>
+              <p>这里展示本次异常分析任务的完整执行路径。</p>
+            </div>
+            <span class="mini-badge">trace_20260514_0001</span>
+          </div>
+          <div class="timeline">
+            <div class="trace-item">
+              <div class="trace-dot">1</div>
+              <div>
+                <b>Knowledge Retrieval</b>
+                <p>召回 PLM 设计记录、BOM 变更、Jira 缺陷、测试报告和质量复盘文档。</p>
+              </div>
+            </div>
+            <div class="trace-item">
+              <div class="trace-dot">2</div>
+              <div>
+                <b>Reranker</b>
+                <p>对召回结果进行重排序，只保留高相关证据进入上下文，降低无关内容干扰。</p>
+              </div>
+            </div>
+            <div class="trace-item">
+              <div class="trace-dot">3</div>
+              <div>
+                <b>Skill Routing</b>
+                <p>选择 RootCauseAnalysisSkill、RiskAssessmentSkill 和 ExecutionSkill。</p>
+              </div>
+            </div>
+            <div class="trace-item">
+              <div class="trace-dot">4</div>
+              <div>
+                <b>Tool Execution</b>
+                <p>创建 Jira 任务、生成异常复盘报告，并通知研发与质量负责人。</p>
+              </div>
+            </div>
+            <div class="trace-item">
+              <div class="trace-dot">5</div>
+              <div>
+                <b>Audit Log</b>
+                <p>所有输入、检索来源、Skill 调用和执行结果写入审计日志，支持回放和责任追踪。</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <aside class="panel glass">
+          <div class="panel-header">
+            <div>
+              <h2 class="section-title">为什么需要 Trace</h2>
+              <p>企业客户不仅关心 AI 是否给答案，更关心答案是否可解释、过程是否可控。</p>
+            </div>
+          </div>
+          <div class="side-list">
+            <div class="side-item">
+              <b>可解释</b>
+              <span>说明 AI 为什么判断为材料批次和散热结构问题。</span>
+            </div>
+            <div class="side-item">
+              <b>可追溯</b>
+              <span>回看使用了哪些企业数据和文档证据。</span>
+            </div>
+            <div class="side-item">
+              <b>可审计</b>
+              <span>记录 Skill 调用、工具执行和人工确认状态。</span>
+            </div>
+            <div class="side-item">
+              <b>可治理</b>
+              <span>为高风险动作设置人工审批边界，避免 Agent 失控。</span>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <section id="tech" class="page">
+      <div class="hero glass">
+        <div class="eyebrow">
+          <span class="spark"></span>
+          技术架构与创新点
+        </div>
+        <h2>RAG 负责可信认知，Skills 负责稳定执行，Trace AI 负责企业治理</h2>
+        <p>技术并不是堆概念，而是分别解决企业 AI 落地中的三个问题：知识是否可信、执行是否稳定、过程是否可审计。</p>
+      </div>
+      <div class="grid-4">
+        <div class="tech-card glass">
+          <div class="tech-icon blue">01</div>
+          <h3>OCR / Chunking / Embedding</h3>
+          <p>把 PDF、扫描件和长测试报告转成可理解的语义知识块，为后续检索和推理做准备。</p>
+        </div>
+        <div class="tech-card glass">
+          <div class="tech-icon purple">02</div>
+          <h3>RAG + Hybrid Search</h3>
+          <p>结合 BM25 关键词检索与向量语义检索，让回答基于企业真实证据，而不是凭空生成。</p>
+        </div>
+        <div class="tech-card glass">
+          <div class="tech-icon green">03</div>
+          <h3>LLM Reasoning Engine</h3>
+          <p>在 RAG 召回完成后，基于企业知识、业务规则和 Structured Prompt 完成根因分析、风险判断、Skill Routing 和 Action Planning。</p>
+        </div>
+        <div class="tech-card glass">
+          <div class="tech-icon green">04</div>
+          <h3>Skills Layer</h3>
+          <p>封装 RootCauseAnalysis、RiskAssessment、Execution 等能力，让 Agent 执行更稳定安全。</p>
+        </div>
+        <div class="tech-card glass">
+          <div class="tech-icon orange">05</div>
+          <h3>Trace AI</h3>
+          <p>用 trace_id 记录知识检索、Skill 调用、模型推理和工具执行，保证可解释、可追溯、可审计。</p>
+        </div>
+      </div>
+      <div class="card glass" style="margin-top: 22px">
+        <h2 class="section-title">核心创新点</h2>
+        <p class="section-copy">
+          相比传统企业 AI 助手，这个产品不是只做知识问答，而是升级为“决策智能体”；不是让 Agent 随机调用工具，而是通过 Skill-based Agent 保证企业级稳定执行；不是只给出结果，而是通过 Trace AI 让每一步决策都可解释、可追溯、可审计。
+        </p>
+      </div>
+    </section>
+
+    <section id="metrics" class="page">
+      <div class="hero glass">
+        <div class="eyebrow">
+          <span class="spark"></span>
+          Demo / PoC 阶段的验证指标
+        </div>
+        <h2>不编造上线数据，而是明确后续如何量化产品效果</h2>
+        <p>这些指标分别验证 RAG 效果、Agent 执行稳定性和最终业务价值。</p>
+      </div>
+      <div class="panel glass">
+        <h2 class="section-title">性能量化目标与作用</h2>
+        <div class="metric-list">
+          <div class="metric-row">
+            <b>Recall@K</b>
+            <span>衡量关键企业知识是否被成功召回，展示 RAG 检索能力。</span>
+          </div>
+          <div class="metric-row">
+            <b>Hallucination Rate</b>
+            <span>衡量 AI 是否在缺少证据时编造答案，展示回答可信度。</span>
+          </div>
+          <div class="metric-row">
+            <b>Evidence Citation Rate</b>
+            <span>衡量回答中有多少内容引用企业真实知识，展示结果可验证性。</span>
+          </div>
+          <div class="metric-row">
+            <b>Skill Routing Accuracy</b>
+            <span>衡量 Agent 是否选择了正确 Skill，展示业务理解准确性。</span>
+          </div>
+          <div class="metric-row">
+            <b>Tool Success Rate</b>
+            <span>衡量企业工具调用是否稳定成功，展示自动执行链路可靠性。</span>
+          </div>
+          <div class="metric-row">
+            <b>API Latency</b>
+            <span>衡量技能和工具调用响应速度，展示系统实时体验。</span>
+          </div>
+          <div class="metric-row">
+            <b>MTTR</b>
+            <span>衡量平均问题处理时间，展示研发异常处理效率是否提升。</span>
+          </div>
+          <div class="metric-row">
+            <b>Knowledge Reuse Rate</b>
+            <span>衡量历史知识是否被再次利用，展示企业数据是否真正被激活。</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <nav class="dock glass">
+      <button type="button" class="active" onclick="showPage('intro', this)">
+        <span class="icon">⌂</span>
+        <span class="txt">介绍</span>
+      </button>
+      <button type="button" onclick="showPage('demo', this)">
+        <span class="icon">▶</span>
+        <span class="txt">分析</span>
+      </button>
+      <button type="button" onclick="showPage('trace', this)">
+        <span class="icon">◉</span>
+        <span class="txt">追溯</span>
+      </button>
+      <button type="button" onclick="showPage('tech', this)">
+        <span class="icon">✦</span>
+        <span class="txt">技术</span>
+      </button>
+      <button type="button" onclick="showPage('metrics', this)">
+        <span class="icon">◎</span>
+        <span class="txt">指标</span>
+      </button>
+    </nav>
+  </div>
+
+  <script>
+    const meta = {
+      intro: {
+        subtitle: "产品介绍 · 增强型数据中台 · AI 数字员工",
+        badge: "Overview",
+      },
+      demo: {
+        subtitle: "核心功能 · Agent 智能分析 · Trace 同步展示",
+        badge: "Main Demo",
+      },
+      trace: {
+        subtitle: "Trace AI · 决策可解释 · 企业级审计",
+        badge: "Trace AI",
+      },
+      tech: {
+        subtitle: "技术架构 · RAG · Skills · Trace AI",
+        badge: "Architecture",
+      },
+      metrics: {
+        subtitle: "性能量化 · 验证目标 · 客户价值",
+        badge: "Metrics",
+      },
+    };
+
+    function showPage(id, btn) {
+      document.querySelectorAll(".page").forEach((p) => p.classList.remove("active"));
+      document.getElementById(id).classList.add("active");
+      document.querySelectorAll(".dock button").forEach((b) => b.classList.remove("active"));
+      if (btn) btn.classList.add("active");
+      document.getElementById("pageSubtitle").innerText = meta[id].subtitle;
+      document.getElementById("pageBadge").innerText = meta[id].badge;
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function runDemo() {
+      document.getElementById("output").classList.add("show");
+    }
+  </script>
+</body>
+</html>

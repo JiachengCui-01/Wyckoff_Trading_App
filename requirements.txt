@@ -1,0 +1,26 @@
+# Wyckoff Trader - Local Requirements
+# Install: pip install -r requirements.txt
+
+# Core ML
+torch>=2.0.0
+transformers>=4.36.0
+peft>=0.7.0
+bitsandbytes>=0.41.0
+accelerate>=0.25.0
+
+# RAG
+sentence-transformers>=2.2.2
+chromadb>=0.4.18
+
+# UI
+streamlit>=1.29.0
+plotly>=5.18.0
+
+# Stock Analysis
+yfinance>=0.2.33
+pandas>=2.0.0
+numpy>=1.24.0
+ta>=0.10.2
+
+# Utilities
+tqdm>=4.66.0

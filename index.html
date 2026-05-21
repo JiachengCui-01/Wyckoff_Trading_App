@@ -1,0 +1,1685 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Wyckoff Trading</title>
+    <style>
+      :root {
+        --bg: #06080b;
+        --bg-soft: #0b1016;
+        --panel: rgba(14, 20, 28, 0.86);
+        --panel-2: rgba(17, 24, 32, 0.78);
+        --panel-strong: rgba(19, 27, 37, 0.94);
+        --glass: rgba(255, 255, 255, 0.075);
+        --liquid-surface: rgba(16, 24, 33, 0.5);
+        --liquid-edge: rgba(255, 255, 255, 0.2);
+        --line: rgba(184, 197, 211, 0.15);
+        --line-strong: rgba(220, 229, 240, 0.24);
+        --muted: #9ba7b5;
+        --muted-2: #687484;
+        --text: #f5f7fa;
+        --green: #36d399;
+        --blue: #9fc7ef;
+        --orange: #d6b16a;
+        --red: #f0747c;
+        --yellow: #d7c578;
+        --shadow: 0 20px 58px rgba(0, 0, 0, 0.3);
+        --liquid-shadow:
+          0 24px 62px rgba(0, 0, 0, 0.32),
+          inset 0 1px 0 rgba(255, 255, 255, 0.18),
+          inset 0 -1px 0 rgba(255, 255, 255, 0.04);
+        --liquid-rim: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background:
+          linear-gradient(180deg, #0b1118 0%, #070a0f 42%, #05070a 100%),
+          linear-gradient(rgba(255, 255, 255, 0.026) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px),
+          #07090d;
+        background-size: auto, 52px 52px, 52px 52px;
+        color: var(--text);
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        letter-spacing: 0;
+      }
+
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent 34%),
+          linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.42));
+        z-index: -1;
+      }
+
+      button,
+      input,
+      select {
+        font: inherit;
+      }
+
+      button {
+        cursor: pointer;
+        transition: border-color 0.16s ease, background 0.16s ease, color 0.16s ease, transform 0.16s ease, box-shadow 0.16s ease;
+      }
+
+      button:active {
+        transform: translateY(1px);
+      }
+
+      ::selection {
+        background: rgba(32, 214, 139, 0.32);
+        color: white;
+      }
+
+      .app {
+        display: grid;
+        grid-template-columns: 328px 1fr;
+        min-height: 100vh;
+      }
+
+      .sidebar {
+        border-right: 1px solid var(--line);
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.045), transparent 28%),
+          rgba(7, 11, 16, 0.82);
+        backdrop-filter: blur(24px) saturate(1.15);
+        -webkit-backdrop-filter: blur(24px) saturate(1.15);
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+        box-shadow: 14px 0 44px rgba(0, 0, 0, 0.18);
+      }
+
+      .brand {
+        height: 86px;
+        padding: 26px 30px;
+        display: flex;
+        align-items: center;
+        border-bottom: 1px solid var(--line);
+        font-size: 24px;
+        font-weight: 850;
+        letter-spacing: 0;
+      }
+
+      .brand span {
+        color: var(--muted);
+        font-weight: 520;
+        margin-left: 6px;
+      }
+
+      .nav {
+        padding: 22px 14px;
+        display: grid;
+        gap: 8px;
+      }
+
+      .nav button {
+        height: 52px;
+        border: 1px solid transparent;
+        border-radius: 8px;
+        background: transparent;
+        color: var(--muted);
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 0 16px;
+        font-size: 16px;
+        font-weight: 760;
+        text-align: left;
+      }
+
+      .nav button:hover {
+        background: rgba(255, 255, 255, 0.055);
+        border-color: rgba(255, 255, 255, 0.12);
+        color: #e8eef6;
+        box-shadow: none;
+        transform: none;
+      }
+
+      .nav button.active {
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.105), rgba(255, 255, 255, 0.045)),
+          rgba(13, 20, 28, 0.72);
+        border-color: rgba(255, 255, 255, 0.16);
+        color: white;
+        box-shadow: inset 3px 0 0 rgba(54, 211, 153, 0.85);
+      }
+
+      .nav svg {
+        width: 24px;
+        height: 24px;
+        color: currentColor;
+      }
+
+      .status {
+        margin-top: auto;
+        border-top: 1px solid var(--line);
+        padding: 22px 24px;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.65;
+      }
+
+      .dot {
+        display: inline-block;
+        width: 11px;
+        height: 11px;
+        border-radius: 50%;
+        background: var(--green);
+        margin-right: 12px;
+      }
+
+      .main {
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .top {
+        height: 86px;
+        border-bottom: 1px solid var(--line);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 32px;
+        font-size: 18px;
+        font-weight: 850;
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.055), transparent),
+          rgba(7, 10, 15, 0.7);
+        backdrop-filter: blur(22px) saturate(1.1);
+        -webkit-backdrop-filter: blur(22px) saturate(1.1);
+        position: sticky;
+        top: 0;
+        z-index: 10;
+      }
+
+      .backend-pill {
+        color: #c5f8dd;
+        background: rgba(32, 214, 139, 0.105);
+        border: 1px solid rgba(32, 214, 139, 0.3);
+        border-radius: 999px;
+        padding: 7px 11px;
+        font-size: 12px;
+        font-weight: 800;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      }
+
+      .page {
+        display: none;
+        flex: 1;
+        min-height: 0;
+      }
+
+      .page.active {
+        display: flex;
+      }
+
+      .center-screen {
+        flex: 1;
+        display: grid;
+        place-items: center;
+        padding: 36px;
+      }
+
+      .chat-wrap {
+        flex: 1;
+        display: grid;
+        grid-template-rows: 1fr auto;
+        min-height: calc(100vh - 86px);
+      }
+
+      .welcome {
+        text-align: center;
+        width: min(760px, 100%);
+      }
+
+      .welcome h1,
+      .analysis-hero h1 {
+        margin: 0 0 16px;
+        font-size: 36px;
+        line-height: 1.15;
+        letter-spacing: 0;
+      }
+
+      .welcome p,
+      .analysis-hero p {
+        margin: 0 auto 42px;
+        max-width: 700px;
+        color: var(--muted);
+        font-size: 18px;
+        line-height: 1.45;
+      }
+
+      .quick {
+        display: grid;
+        gap: 12px;
+        place-items: center;
+      }
+
+      .quick button {
+        width: min(450px, 100%);
+        min-height: 50px;
+        color: white;
+        background: rgba(13, 18, 24, 0.74);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        font-weight: 750;
+        font-size: 15px;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+      }
+
+      .quick button:hover {
+        border-color: rgba(32, 214, 139, 0.38);
+        background: rgba(32, 214, 139, 0.09);
+      }
+
+      .messages {
+        width: min(920px, calc(100% - 48px));
+        margin: 0 auto;
+        padding: 36px 0 130px;
+        display: none;
+        gap: 18px;
+        align-content: start;
+      }
+
+      .messages.show {
+        display: grid;
+      }
+
+      .message {
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        border-radius: 16px;
+        padding: 18px 20px;
+        line-height: 1.65;
+        white-space: pre-wrap;
+        box-shadow: var(--liquid-shadow);
+      }
+
+      .user {
+        justify-self: end;
+        max-width: 76%;
+        background: linear-gradient(180deg, #f5fbf8, #dceee7);
+        color: #0e1726;
+        border-color: rgba(255, 255, 255, 0.62);
+      }
+
+      .bot {
+        justify-self: start;
+        max-width: 84%;
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.026)),
+          rgba(12, 18, 25, 0.6);
+        backdrop-filter: blur(26px) saturate(1.36);
+        -webkit-backdrop-filter: blur(26px) saturate(1.36);
+      }
+
+      .context {
+        margin-top: 14px;
+        display: grid;
+        gap: 10px;
+      }
+
+      .context details {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 12px;
+        color: var(--muted);
+        font-size: 13px;
+        background: rgba(255, 255, 255, 0.025);
+      }
+
+      .chat-input {
+        position: sticky;
+        bottom: 0;
+        border-top: 1px solid rgba(255, 255, 255, 0.14);
+        background:
+          linear-gradient(110deg, rgba(255, 255, 255, 0.08), transparent 34%),
+          rgba(7, 9, 13, 0.62);
+        backdrop-filter: blur(30px) saturate(1.34);
+        -webkit-backdrop-filter: blur(30px) saturate(1.34);
+        padding: 18px 24px;
+      }
+
+      .chat-box {
+        position: relative;
+        overflow: hidden;
+        width: min(1110px, 100%);
+        margin: 0 auto;
+        display: grid;
+        grid-template-columns: 1fr 52px;
+        gap: 12px;
+        padding: 8px;
+        border: 1px solid var(--liquid-edge);
+        border-radius: 18px;
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.028)),
+          rgba(11, 16, 22, 0.7);
+        box-shadow: var(--liquid-shadow);
+        backdrop-filter: blur(26px) saturate(1.16);
+        -webkit-backdrop-filter: blur(26px) saturate(1.16);
+      }
+
+      .chat-box input,
+      .control,
+      select {
+        min-width: 0;
+        height: 52px;
+        border-radius: 8px;
+        border: 1px solid rgba(184, 197, 211, 0.16);
+        background: rgba(9, 14, 20, 0.82);
+        color: white;
+        padding: 0 18px;
+        font-size: 15px;
+        outline: none;
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.055);
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+        transition: border-color 0.16s ease, background 0.16s ease, box-shadow 0.16s ease;
+      }
+
+      .chat-box input:focus,
+      .control:focus,
+      select:focus {
+        border-color: rgba(200, 255, 232, 0.58);
+        box-shadow: 0 0 0 4px rgba(32, 214, 139, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 12px 28px rgba(0, 0, 0, 0.16);
+      }
+
+      .chat-box button,
+      .icon-button {
+        border: 1px solid rgba(255, 255, 255, 0.32);
+        border-radius: 14px;
+        background:
+          linear-gradient(180deg, #f4fbff, #c9e5ef);
+        color: #071015;
+        display: grid;
+        place-items: center;
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.74);
+        backdrop-filter: blur(16px) saturate(1.24);
+        -webkit-backdrop-filter: blur(16px) saturate(1.24);
+      }
+
+      .chat-box button:hover,
+      .icon-button:hover {
+        box-shadow: 0 14px 28px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.82);
+        transform: translateY(-1px);
+      }
+
+      .analysis-page {
+        display: none;
+        flex-direction: column;
+        overflow: auto;
+      }
+
+      .analysis-page.active {
+        display: flex;
+      }
+
+      .analysis-hero {
+        width: min(980px, calc(100% - 48px));
+        margin: 0 auto;
+        padding: 84px 0 42px;
+        text-align: center;
+        transition: 0.2s ease;
+      }
+
+      .analysis-hero.compact {
+        width: min(1180px, calc(100% - 48px));
+        padding: 34px 0 20px;
+        text-align: left;
+      }
+
+      .analysis-hero.compact .hero-icon {
+        display: none;
+      }
+
+      .analysis-hero.compact h1 {
+        font-size: 38px;
+        margin-bottom: 8px;
+      }
+
+      .analysis-hero.compact p {
+        margin: 0 0 28px;
+        max-width: 720px;
+      }
+
+      .hero-icon {
+        width: 86px;
+        height: 86px;
+        border-radius: 22px;
+        margin: 0 auto 36px;
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.035)),
+          rgba(12, 18, 25, 0.44);
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        display: grid;
+        place-items: center;
+        color: #d7fce8;
+        box-shadow: var(--liquid-shadow);
+        backdrop-filter: blur(26px) saturate(1.36);
+        -webkit-backdrop-filter: blur(26px) saturate(1.36);
+      }
+
+      .controls {
+        position: relative;
+        overflow: hidden;
+        display: grid;
+        grid-template-columns: 184px 150px 116px 156px;
+        gap: 12px;
+        justify-content: center;
+        align-items: center;
+        padding: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        border-radius: 20px;
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.105), rgba(255, 255, 255, 0.03)),
+          rgba(8, 14, 20, 0.58);
+        box-shadow: var(--liquid-shadow);
+        backdrop-filter: blur(28px) saturate(1.18);
+        -webkit-backdrop-filter: blur(28px) saturate(1.18);
+      }
+
+      .controls::before,
+      .chart-card::before,
+      .action::before,
+      .chat-box::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background:
+          linear-gradient(115deg, rgba(255, 255, 255, 0.16), transparent 22%, transparent 72%, rgba(255, 255, 255, 0.055));
+        opacity: 0.68;
+      }
+
+      .controls::after,
+      .chart-card::after,
+      .action::after,
+      .chat-box::after {
+        content: "";
+        position: absolute;
+        inset: 1px;
+        pointer-events: none;
+        border-radius: inherit;
+        border: 1px solid rgba(255, 255, 255, 0.055);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.13);
+      }
+
+      .controls > *,
+      .chart-card > *,
+      .action > *,
+      .chat-box > * {
+        position: relative;
+        z-index: 1;
+      }
+
+      .analysis-hero.compact .controls {
+        justify-content: start;
+        width: fit-content;
+        max-width: 100%;
+      }
+
+      .analyze-btn {
+        height: 52px;
+        border: 1px solid rgba(255, 255, 255, 0.46);
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        font-size: 15px;
+        font-weight: 850;
+        background:
+          linear-gradient(180deg, #f4fbff, #c9e5ef);
+        color: #071015;
+        box-shadow: 0 14px 28px rgba(0, 0, 0, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.82);
+        backdrop-filter: blur(16px) saturate(1.24);
+        -webkit-backdrop-filter: blur(16px) saturate(1.24);
+      }
+
+      .analyze-btn:hover {
+        box-shadow: 0 16px 32px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.88);
+        transform: translateY(-1px);
+      }
+
+      .results {
+        display: none;
+        width: min(1180px, calc(100% - 48px));
+        margin: 0 auto 70px;
+        gap: 18px;
+      }
+
+      .results.show {
+        display: grid;
+      }
+
+      .stock-title {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        align-items: end;
+      }
+
+      .stock-title h2 {
+        font-size: 38px;
+        margin: 0 0 10px;
+      }
+
+      .stock-title p {
+        color: var(--muted);
+        font-size: 16px;
+        margin: 0;
+      }
+
+      .card {
+        position: relative;
+        overflow: hidden;
+        border: 1px solid rgba(184, 197, 211, 0.16);
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.018)),
+          rgba(13, 19, 27, 0.86);
+        border-radius: 8px;
+        padding: 24px;
+        box-shadow: 0 18px 42px rgba(0, 0, 0, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.055);
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+        transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+      }
+
+      .card:hover {
+        border-color: rgba(220, 229, 240, 0.22);
+        box-shadow: 0 22px 48px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+        transform: translateY(-1px);
+      }
+
+      .action {
+        display: grid;
+        gap: 22px;
+        min-height: 214px;
+        border-color: rgba(32, 214, 139, 0.24);
+        background:
+          linear-gradient(180deg, rgba(54, 211, 153, 0.08), rgba(255, 255, 255, 0.016)),
+          rgba(13, 19, 27, 0.88);
+      }
+
+      .action-head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 14px;
+        font-size: 22px;
+        font-weight: 820;
+      }
+
+      .badge {
+        border-radius: 999px;
+        padding: 7px 12px;
+        font-size: 12px;
+        border: 1px solid currentColor;
+        background:
+          rgba(214, 177, 106, 0.1);
+        letter-spacing: 0.04em;
+        box-shadow: none;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+      }
+
+      .bullish {
+        color: var(--green);
+      }
+
+      .bearish {
+        color: var(--red);
+      }
+
+      .neutral {
+        color: var(--yellow);
+      }
+
+      .phase-track {
+        display: grid;
+        gap: 18px;
+      }
+
+      .phase-track h2 {
+        color: #edf2f7;
+        font-size: 18px;
+        letter-spacing: 0;
+      }
+
+      .phase-dot-row {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        align-items: center;
+        text-align: center;
+        margin-top: -2px;
+      }
+
+      .phase-dot {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        margin: 0 auto;
+        border: 2px solid rgba(255, 255, 255, 0.38);
+        background: #141a21;
+        box-shadow: 0 0 0 6px rgba(0, 0, 0, 0.2);
+      }
+
+      .phase-dot:nth-child(1) {
+        background: var(--green);
+      }
+
+      .phase-dot:nth-child(2) {
+        background: #9fc7ef;
+      }
+
+      .phase-dot:nth-child(3) {
+        background: #d6b16a;
+      }
+
+      .phase-dot:nth-child(4) {
+        background: #9b86e8;
+      }
+
+      .phase-dot.active-dot {
+        outline: 5px solid rgba(244, 247, 251, 0.88);
+        box-shadow: 0 0 0 10px rgba(255, 255, 255, 0.08), 0 0 24px rgba(255, 255, 255, 0.16);
+      }
+
+      .track {
+        height: 28px;
+        border-radius: 10px;
+        overflow: hidden;
+        background: rgba(255, 255, 255, 0.055);
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+      }
+
+      .track span {
+        position: relative;
+        min-width: 0;
+      }
+
+      .track span + span {
+        border-left: 1px solid rgba(5, 7, 10, 0.42);
+      }
+
+      .track span:nth-child(1) {
+        background: linear-gradient(180deg, rgba(54, 211, 153, 0.95), rgba(54, 211, 153, 0.56));
+      }
+
+      .track span:nth-child(2) {
+        background: linear-gradient(180deg, rgba(159, 199, 239, 0.95), rgba(159, 199, 239, 0.55));
+      }
+
+      .track span:nth-child(3) {
+        background: linear-gradient(180deg, rgba(214, 177, 106, 0.95), rgba(214, 177, 106, 0.55));
+      }
+
+      .track span:nth-child(4) {
+        background: linear-gradient(180deg, rgba(155, 134, 232, 0.95), rgba(155, 134, 232, 0.52));
+      }
+
+      .phase-labels {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        text-align: center;
+        gap: 8px;
+        color: #c3ccd7;
+        font-size: 13px;
+        font-weight: 850;
+      }
+
+      .phase-labels span {
+        min-height: 36px;
+        display: grid;
+        place-items: center;
+        border-radius: 8px;
+        border: 1px solid rgba(184, 197, 211, 0.12);
+        background: rgba(255, 255, 255, 0.035);
+        padding: 0 6px;
+      }
+
+      .phase-labels .active-phase {
+        color: white;
+        border-color: rgba(255, 255, 255, 0.32);
+        background: rgba(255, 255, 255, 0.095);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.09);
+      }
+
+      .metrics {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 18px;
+      }
+
+      .metric strong {
+        display: block;
+        margin-bottom: 8px;
+        font-size: 32px;
+        color: var(--green);
+        line-height: 1.12;
+      }
+
+      .metric span {
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 760;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+
+      #actionCopy {
+        font-size: 22px;
+        line-height: 1.48;
+        margin: 0;
+        color: #dce6f2;
+      }
+
+      #phaseText {
+        color: #edf2f7;
+        font-size: 16px;
+        font-weight: 850;
+        margin: 4px 0 0;
+        padding: 10px 12px;
+        border-radius: 8px;
+        border: 1px solid rgba(184, 197, 211, 0.14);
+        background: rgba(255, 255, 255, 0.035);
+      }
+
+      #phaseText.phase-accumulation {
+        color: #dcfceb;
+        border-color: rgba(54, 211, 153, 0.38);
+        background: rgba(54, 211, 153, 0.12);
+      }
+
+      #phaseText.phase-markup {
+        color: #e2f0ff;
+        border-color: rgba(159, 199, 239, 0.42);
+        background: rgba(159, 199, 239, 0.12);
+      }
+
+      #phaseText.phase-distribution {
+        color: #fff0d2;
+        border-color: rgba(214, 177, 106, 0.44);
+        background: rgba(214, 177, 106, 0.13);
+      }
+
+      #phaseText.phase-markdown {
+        color: #eee9ff;
+        border-color: rgba(155, 134, 232, 0.48);
+        background: rgba(155, 134, 232, 0.14);
+      }
+
+      .chart-card {
+        overflow: hidden;
+        padding-bottom: 20px;
+      }
+
+      .chart-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 14px;
+      }
+
+      .chart-head h2 {
+        margin: 0;
+        font-size: 16px;
+        color: #e6edf6;
+      }
+
+      .chart-toggle {
+        display: inline-grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 4px;
+        padding: 5px;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.055);
+        border: 1px solid rgba(184, 197, 211, 0.14);
+        box-shadow: none;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+      }
+
+      .chart-toggle button {
+        width: 34px;
+        height: 34px;
+        border: 0;
+        border-radius: 6px;
+        display: grid;
+        place-items: center;
+        color: #cbd5e1;
+        background: transparent;
+      }
+
+      .chart-toggle button.active {
+        color: #071015;
+        background: linear-gradient(180deg, #f4fbff, #c9e5ef);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+      }
+
+      .chart {
+        width: 100%;
+        height: 430px;
+        display: block;
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 34%),
+          linear-gradient(rgba(255, 255, 255, 0.028) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+          rgba(3, 7, 12, 0.34);
+        background-size: auto, 40px 40px, 40px 40px, auto;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      }
+
+      .chart-legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 12px;
+      }
+
+      .event-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 32px;
+        padding: 6px 11px;
+        border-radius: 999px;
+        background:
+          rgba(22, 199, 132, 0.08);
+        color: #1ee486;
+        font-size: 14px;
+        font-weight: 850;
+        border: 1px solid rgba(32, 214, 139, 0.28);
+        box-shadow: none;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+      }
+
+      .event-chip.bear {
+        background: rgba(255, 90, 95, 0.08);
+        color: #ff4d55;
+        border-color: rgba(255, 102, 112, 0.24);
+      }
+
+      .event-chip span {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: currentColor;
+      }
+
+      .axis-label {
+        fill: #94a3b8;
+        font-size: 13px;
+      }
+
+      .grid-line {
+        stroke: rgba(148, 163, 184, 0.15);
+        stroke-width: 1;
+      }
+
+      .axis-line {
+        stroke: rgba(203, 213, 225, 0.28);
+        stroke-width: 1.5;
+      }
+
+      .resistance-line {
+        stroke: #ff454f;
+        stroke-width: 1.5;
+        stroke-dasharray: 7 8;
+      }
+
+      .support-line {
+        stroke: #00d66f;
+        stroke-width: 1.5;
+        stroke-dasharray: 7 8;
+      }
+
+      .event-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+        gap: 12px;
+      }
+
+      .event-item {
+        border: 1px solid rgba(184, 197, 211, 0.14);
+        border-radius: 8px;
+        padding: 14px;
+        color: var(--muted);
+        background: rgba(10, 16, 23, 0.62);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+      }
+
+      .error-panel {
+        display: none;
+        width: min(760px, calc(100% - 48px));
+        margin: 18px auto 0;
+        border: 1px solid rgba(255, 90, 95, 0.4);
+        background: rgba(255, 90, 95, 0.08);
+        color: #ffd8da;
+        border-radius: 8px;
+        padding: 16px 18px;
+        line-height: 1.5;
+      }
+
+      .error-panel.show {
+        display: block;
+      }
+
+      .event-item b {
+        display: block;
+        color: white;
+        font-size: 15px;
+        margin-bottom: 4px;
+      }
+
+      .guide {
+        width: min(1120px, calc(100% - 48px));
+        margin: 0 auto;
+        padding: 42px 0 70px;
+        display: grid;
+        gap: 18px;
+      }
+
+      .guide h1 {
+        font-size: 34px;
+        margin: 0 0 4px;
+      }
+
+      .guide-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 18px;
+      }
+
+      .guide h3 {
+        margin: 0 0 12px;
+        font-size: 17px;
+      }
+
+      .guide p,
+      .guide li {
+        color: var(--muted);
+        line-height: 1.65;
+        font-size: 15px;
+      }
+
+      .mobile-menu {
+        display: none;
+        border: 0;
+        background: transparent;
+        color: white;
+      }
+
+      @media (max-width: 940px) {
+        .app {
+          display: block;
+        }
+
+        .sidebar {
+          position: fixed;
+          inset: 0 auto 0 0;
+          width: min(320px, 86vw);
+          z-index: 20;
+          transform: translateX(-101%);
+          transition: transform 0.18s ease;
+        }
+
+        .sidebar.open {
+          transform: translateX(0);
+        }
+
+        .mobile-menu {
+          display: grid;
+          place-items: center;
+        }
+
+        .top {
+          justify-content: flex-start;
+          gap: 24px;
+          padding: 0 24px;
+          height: 78px;
+          font-size: 22px;
+        }
+
+        .backend-pill {
+          display: none;
+        }
+
+        .welcome h1,
+        .analysis-hero h1 {
+          font-size: 28px;
+        }
+
+        .welcome p,
+        .analysis-hero p {
+          font-size: 18px;
+        }
+
+        .controls {
+          grid-template-columns: 1fr 1fr;
+          width: 100%;
+        }
+
+        .analyze-btn {
+          grid-column: span 2;
+        }
+
+        .stock-title {
+          display: block;
+        }
+
+        .metrics,
+        .guide-grid {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+
+      @media (max-width: 640px) {
+        .center-screen {
+          padding: 24px;
+          place-items: start;
+          align-content: center;
+        }
+
+        .messages {
+          width: calc(100% - 28px);
+        }
+
+        .user,
+        .bot {
+          max-width: 94%;
+        }
+
+        .analysis-hero,
+        .results,
+        .guide {
+          width: calc(100% - 28px);
+        }
+
+        .analysis-hero {
+          text-align: left;
+          padding-top: 34px;
+        }
+
+        .analysis-hero.compact h1 {
+          font-size: 34px;
+        }
+
+        .hero-icon {
+          display: none;
+        }
+
+        .controls,
+        .metrics,
+        .guide-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .analyze-btn {
+          grid-column: auto;
+        }
+
+        .card {
+          border-radius: 8px;
+          padding: 20px;
+        }
+
+        .metric strong {
+          font-size: 30px;
+        }
+
+        #actionCopy {
+          font-size: 18px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <aside class="sidebar" id="sidebar">
+        <div class="brand">Wyckoff <span>Trading</span></div>
+        <nav class="nav">
+          <button data-page="chat" class="active" title="ChatBot">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg>
+            ChatBot
+          </button>
+          <button data-page="analysis" title="Stock Analysis">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+            Stock Analysis
+          </button>
+          <button data-page="guide" title="Wyckoff Guide">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5z"/></svg>
+            Wyckoff Guide
+          </button>
+        </nav>
+        <div class="status"><span class="dot"></span>Backend Connected<br />Powered by knowledge retrieval and live market data</div>
+      </aside>
+
+      <main class="main">
+        <header class="top">
+          <button class="mobile-menu" id="menuBtn" title="Open navigation">
+            <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+          </button>
+          <span id="pageTitle">ChatBot</span>
+          <span class="backend-pill">Vercel API Online</span>
+        </header>
+
+        <section class="page active" id="chatPage">
+          <div class="chat-wrap">
+            <div class="center-screen" id="chatWelcome">
+              <div class="welcome">
+                <h1>Wyckoff Trading Assistant</h1>
+                <p>Ask questions about Wyckoff methodology, market phases, and trading strategies.</p>
+                <div class="quick" id="quickQuestions"></div>
+              </div>
+            </div>
+            <div class="messages" id="messages"></div>
+            <form class="chat-input" id="chatForm">
+              <div class="chat-box">
+                <input id="chatInput" autocomplete="off" placeholder="Ask about Wyckoff methodology..." />
+                <button title="Send question">
+                  <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></svg>
+                </button>
+              </div>
+            </form>
+          </div>
+        </section>
+
+        <section class="analysis-page" id="analysisPage">
+          <div class="analysis-hero" id="analysisHero">
+            <div class="hero-icon">
+              <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 16V9M12 16V5M17 16v-4"/></svg>
+            </div>
+            <h1>Wyckoff Stock Analysis</h1>
+            <p>Select a stock to detect Wyckoff patterns and backtest trading strategies.</p>
+            <div class="controls">
+              <select id="groupSelect"></select>
+              <select id="tickerSelect"></select>
+              <select id="rangeSelect">
+                <option>1M</option>
+                <option>3M</option>
+                <option>6M</option>
+                <option selected>1Y</option>
+                <option>2Y</option>
+              </select>
+              <button class="analyze-btn" id="analyzeBtn">
+                <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+                Analyze
+              </button>
+            </div>
+            <div class="error-panel" id="analysisError"></div>
+          </div>
+
+          <div class="results" id="results">
+            <div class="stock-title">
+              <div>
+                <h2 id="stockName">AAPL</h2>
+                <p id="stockSummary">Loading analysis...</p>
+              </div>
+              <span id="latestDate" class="backend-pill"></span>
+            </div>
+
+            <section class="card action">
+              <div class="action-head">
+                <span>Trading Action</span>
+                <span class="badge" id="actionBadge">MONITOR CLOSELY</span>
+                <span id="biasText">Neutral</span>
+              </div>
+              <p id="actionCopy">Waiting for confirmation.</p>
+            </section>
+
+            <section class="card phase-track">
+              <h2 style="margin: 0;">Wyckoff Cycle Position</h2>
+              <div class="track"><span></span><span></span><span></span><span></span></div>
+              <div class="phase-dot-row" id="phaseDots">
+                <span class="phase-dot"></span><span class="phase-dot"></span><span class="phase-dot"></span><span class="phase-dot"></span>
+              </div>
+              <div class="phase-labels" id="phaseLabels">
+                <span>Accumulation</span><span>Markup</span><span>Distribution</span><span>Markdown</span>
+              </div>
+              <p id="phaseText"></p>
+            </section>
+
+            <section class="metrics">
+              <div class="card metric"><strong id="priceMetric">$0</strong><span>Price</span></div>
+              <div class="card metric"><strong id="phaseMetric" style="color: var(--blue);">-</strong><span>Wyckoff Phase</span></div>
+              <div class="card metric"><strong id="returnMetric">0%</strong><span>Period Return</span></div>
+              <div class="card metric"><strong id="winMetric" style="color: var(--blue);">0%</strong><span>Win Rate</span></div>
+            </section>
+
+            <section class="card chart-card">
+              <div class="chart-head">
+                <h2 id="chartTitle">AAPL Price Chart</h2>
+                <div class="chart-toggle" aria-label="Chart display mode">
+                  <button id="simpleChartBtn" class="active" title="Simple chart mode" type="button">
+                    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 17 6-6 4 4 7-8"/><path d="M14 7h6v6"/></svg>
+                  </button>
+                  <button id="detailChartBtn" title="Detailed chart mode" type="button">
+                    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V5"/><path d="M9 19V9"/><path d="M14 19V3"/><path d="M19 19v-7"/><path d="M3 19h18"/></svg>
+                  </button>
+                </div>
+              </div>
+              <svg class="chart" id="chart" role="img" aria-label="Stock price chart"></svg>
+              <div class="chart-legend" id="chartLegend"></div>
+            </section>
+
+            <section class="card">
+              <h2 style="margin-top: 0;">Detected Events</h2>
+              <div class="event-list" id="events"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="page" id="guidePage">
+          <div class="guide">
+            <h1>Wyckoff Guide</h1>
+            <p style="margin-top: 0;">A compact reference for the methodology used by the assistant and stock analyzer.</p>
+            <div class="guide-grid">
+              <article class="card">
+                <h3>Three Laws</h3>
+                <p>Supply and demand drive direction, cause and effect links trading ranges to future moves, and effort versus result reveals hidden strength or weakness.</p>
+              </article>
+              <article class="card">
+                <h3>Accumulation</h3>
+                <p>Look for selling climax, automatic rally, secondary test, spring, sign of strength, and last point of support.</p>
+              </article>
+              <article class="card">
+                <h3>Distribution</h3>
+                <p>Watch buying climax, automatic reaction, upthrust, sign of weakness, and last point of supply.</p>
+              </article>
+            </div>
+            <article class="card">
+              <h3>Trading Discipline</h3>
+              <ul>
+                <li>Use volume to confirm price intent.</li>
+                <li>Prefer entries after tests, not during emotional climax bars.</li>
+                <li>Place invalidation near the structure that justified the trade.</li>
+              </ul>
+            </article>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script>
+      const stockGroups = {
+        "Tech Giants": ["AAPL", "MSFT", "GOOGL", "AMZN", "META", "NVDA"],
+        Finance: ["JPM", "BAC", "GS", "V", "MA"],
+        ETFs: ["SPY", "QQQ", "IWM", "DIA", "XLF"],
+        "Crypto-Related": ["COIN", "MSTR"],
+        Other: ["TSLA", "AMD", "NFLX", "DIS"]
+      };
+
+      const quickQuestions = [
+        "What is a Spring in Wyckoff methodology?",
+        "What are Wyckoff's three fundamental laws?",
+        "How do I identify the accumulation phase?",
+        "What volume patterns indicate distribution?"
+      ];
+
+      const chatFallbackReply =
+        "I could not find a high-confidence match in the Wyckoff knowledge base. Try asking about Springs, Selling Climax, accumulation, distribution, volume confirmation, or Phase A-E.";
+      const chatDomainTerms = [
+        "wyckoff", "accumulation", "distribution", "spring", "phase", "volume", "price", "support",
+        "resistance", "trading", "trade", "entry", "exit", "risk", "markup", "markdown", "range",
+        "climax", "sos", "sow", "lps", "lpsy", "upthrust", "absorption", "supply", "demand",
+        "chart", "breakout", "breakdown", "institutional", "smart money", "law", "laws", "cause",
+        "effect", "effort", "result", "method", "methodology", "pattern", "structure", "trend",
+        "composite man", "selling climax", "buying climax", "point and figure"
+      ];
+      const smallTalkPattern = /^(hi|hello|hey|yo|thanks|thank you|ok|okay|test|testing|who are you|good morning|good afternoon|good evening)[.!?\s]*$/i;
+
+      const pageTitle = document.querySelector("#pageTitle");
+      const sidebar = document.querySelector("#sidebar");
+      const messages = document.querySelector("#messages");
+      const chatWelcome = document.querySelector("#chatWelcome");
+      const quickWrap = document.querySelector("#quickQuestions");
+      const groupSelect = document.querySelector("#groupSelect");
+      const tickerSelect = document.querySelector("#tickerSelect");
+      let chartMode = "simple";
+      let currentAnalysis = null;
+
+      function setPage(page) {
+        document.querySelectorAll("[data-page]").forEach((button) => button.classList.toggle("active", button.dataset.page === page));
+        document.querySelector("#chatPage").classList.toggle("active", page === "chat");
+        document.querySelector("#analysisPage").classList.toggle("active", page === "analysis");
+        document.querySelector("#guidePage").classList.toggle("active", page === "guide");
+        pageTitle.textContent = page === "analysis" ? "Stock Analysis" : page === "guide" ? "Wyckoff Guide" : "ChatBot";
+        history.replaceState(null, "", page === "chat" ? "/" : `/${page}`);
+        sidebar.classList.remove("open");
+      }
+
+      document.querySelectorAll("[data-page]").forEach((button) => button.addEventListener("click", () => setPage(button.dataset.page)));
+      document.querySelector("#menuBtn").addEventListener("click", () => sidebar.classList.toggle("open"));
+
+      quickQuestions.forEach((question) => {
+        const button = document.createElement("button");
+        button.textContent = question;
+        button.addEventListener("click", () => ask(question));
+        quickWrap.appendChild(button);
+      });
+
+      Object.keys(stockGroups).forEach((group) => groupSelect.add(new Option(group, group)));
+      function updateTickers() {
+        tickerSelect.innerHTML = "";
+        stockGroups[groupSelect.value].forEach((ticker) => tickerSelect.add(new Option(ticker, ticker)));
+      }
+      groupSelect.addEventListener("change", updateTickers);
+      updateTickers();
+
+      function addMessage(role, content, context = []) {
+        chatWelcome.style.display = "none";
+        messages.classList.add("show");
+        const node = document.createElement("div");
+        node.className = `message ${role}`;
+        node.textContent = role === "bot" ? cleanBotAnswer(content) : content;
+        if (context.length) {
+          const contextNode = document.createElement("div");
+          contextNode.className = "context";
+          context.forEach((item) => {
+            const detail = document.createElement("details");
+            detail.innerHTML = `<summary>${item.label} - ${Math.round(item.similarity * 100)}% match</summary><p>${item.question}</p>`;
+            contextNode.appendChild(detail);
+          });
+          node.appendChild(contextNode);
+        }
+        messages.appendChild(node);
+        node.scrollIntoView({ behavior: "smooth", block: "end" });
+      }
+
+      function cleanBotAnswer(content) {
+        return String(content || "")
+          .replace(/\n?\s*Related context:\s*/gi, "\n\n")
+          .replace(/\n?\s*Additionally:\s*/gi, "\n\n")
+          .replace(/\n{3,}/g, "\n\n")
+          .trim();
+      }
+
+      function normalizeChatQuestion(question) {
+        return question
+          .normalize("NFKC")
+          .replace(/[\u200B-\u200D\uFEFF]/g, "")
+          .replace(/\s+/g, " ")
+          .trim();
+      }
+
+      function isWyckoffQuestion(question) {
+        const normalized = normalizeChatQuestion(question).toLowerCase();
+        if (!normalized) return false;
+        if (smallTalkPattern.test(normalized)) return false;
+        return chatDomainTerms.some((term) => normalized.includes(term));
+      }
+
+      async function ask(question) {
+        const cleanQuestion = normalizeChatQuestion(question);
+        addMessage("user", cleanQuestion);
+        if (!isWyckoffQuestion(cleanQuestion)) {
+          addMessage("bot", chatFallbackReply);
+          return;
+        }
+        addMessage("bot", "Analyzing Wyckoff knowledge base...");
+        const pending = messages.lastElementChild;
+        try {
+          const response = await fetch("/api/chat?v=chatbot-rag-rerank-v4", {
+            method: "POST",
+            cache: "no-store",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ question: cleanQuestion })
+          });
+          const data = await response.json();
+          pending.remove();
+          if (!response.ok) throw new Error(data.error || "Chat failed");
+          if (!isWyckoffQuestion(cleanQuestion)) {
+            addMessage("bot", chatFallbackReply);
+            return;
+          }
+          addMessage("bot", data.answer, data.context || []);
+        } catch (error) {
+          pending.textContent = `Chat service error: ${error.message}`;
+        }
+      }
+
+      document.querySelector("#chatForm").addEventListener("submit", (event) => {
+        event.preventDefault();
+        const input = document.querySelector("#chatInput");
+        const question = input.value.trim();
+        if (!question) return;
+        input.value = "";
+        ask(question);
+      });
+
+      function phaseIndex(phase) {
+        if (/accumulation/i.test(phase)) return 0;
+        if (/markup/i.test(phase)) return 1;
+        if (/distribution/i.test(phase)) return 2;
+        if (/markdown/i.test(phase)) return 3;
+        return 0;
+      }
+
+      function phaseClass(phase) {
+        return ["phase-accumulation", "phase-markup", "phase-distribution", "phase-markdown"][phaseIndex(phase)];
+      }
+
+      function formatDateLabel(value) {
+        const [, month, day] = value.split("-");
+        return `${month}-${day}`;
+      }
+
+      function rollingLevels(candles, index, length = 14) {
+        const start = Math.max(0, index - length + 1);
+        const window = candles.slice(start, index + 1);
+        return {
+          support: Math.min(...window.map((c) => c.low)),
+          resistance: Math.max(...window.map((c) => c.high))
+        };
+      }
+
+      function buildLine(points, smooth = false) {
+        if (!points.length) return "";
+        if (!smooth || points.length < 3) return points.map((p) => `${p.x},${p.y}`).join(" ");
+        let path = `M ${points[0].x} ${points[0].y}`;
+        for (let i = 1; i < points.length; i += 1) {
+          const prev = points[i - 1];
+          const curr = points[i];
+          const midX = (prev.x + curr.x) / 2;
+          path += ` Q ${prev.x} ${prev.y} ${midX} ${(prev.y + curr.y) / 2}`;
+          path += ` T ${curr.x} ${curr.y}`;
+        }
+        return path;
+      }
+
+      function drawChart(candles, events, ticker = "AAPL") {
+        const visibleCandles = candles.slice(-90);
+        const visibleDates = new Set(visibleCandles.map((c) => c.date));
+        const visibleEvents = events.filter((event) => visibleDates.has(event.date));
+        const svg = document.querySelector("#chart");
+        const legend = document.querySelector("#chartLegend");
+        svg.innerHTML = "";
+        legend.innerHTML = "";
+        const width = svg.clientWidth || 900;
+        const height = svg.clientHeight || 430;
+        svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+        const pad = { top: 28, right: 30, bottom: 52, left: 76 };
+        const levels = visibleCandles.map((_, index) => rollingLevels(visibleCandles, index, 14));
+        const prices = visibleCandles.flatMap((c, index) => [c.high, c.low, levels[index].support, levels[index].resistance]);
+        const rawMin = Math.min(...prices);
+        const rawMax = Math.max(...prices);
+        const pricePad = Math.max(2, (rawMax - rawMin) * 0.08);
+        const min = rawMin - pricePad;
+        const max = rawMax + pricePad;
+        const x = (i) => pad.left + (i / Math.max(1, visibleCandles.length - 1)) * (width - pad.left - pad.right);
+        const y = (price) => pad.top + ((max - price) / Math.max(1, max - min)) * (height - pad.top - pad.bottom);
+        const make = (name, attrs) => {
+          const el = document.createElementNS("http://www.w3.org/2000/svg", name);
+          Object.entries(attrs).forEach(([key, value]) => el.setAttribute(key, value));
+          svg.appendChild(el);
+          return el;
+        };
+
+        document.querySelector("#chartTitle").textContent = `${ticker} Price Chart (Last ${visibleCandles.length} Days)`;
+        document.querySelector("#simpleChartBtn").classList.toggle("active", chartMode === "simple");
+        document.querySelector("#detailChartBtn").classList.toggle("active", chartMode === "detailed");
+
+        for (let i = 0; i < 6; i += 1) {
+          const value = min + ((max - min) / 5) * i;
+          const yy = y(value);
+          make("line", { x1: pad.left, y1: yy, x2: width - pad.right, y2: yy, class: "grid-line" });
+          const label = make("text", { x: pad.left - 10, y: yy + 4, "text-anchor": "end", class: "axis-label" });
+          label.textContent = `$${Math.round(value)}`;
+        }
+
+        const xTickCount = Math.min(12, Math.max(5, Math.floor(width / 110)));
+        for (let i = 0; i < xTickCount; i += 1) {
+          const index = Math.round((i / Math.max(1, xTickCount - 1)) * (visibleCandles.length - 1));
+          const xx = x(index);
+          make("line", { x1: xx, y1: height - pad.bottom, x2: xx, y2: height - pad.bottom + 7, class: "axis-line" });
+          const label = make("text", { x: xx, y: height - pad.bottom + 24, "text-anchor": "middle", class: "axis-label" });
+          label.textContent = formatDateLabel(visibleCandles[index].date);
+        }
+
+        make("line", { x1: pad.left, y1: pad.top, x2: pad.left, y2: height - pad.bottom, class: "axis-line" });
+        make("line", { x1: pad.left, y1: height - pad.bottom, x2: width - pad.right, y2: height - pad.bottom, class: "axis-line" });
+
+        const supportPoints = levels.map((level, i) => `${x(i)},${y(level.support)}`).join(" ");
+        const resistancePoints = levels.map((level, i) => `${x(i)},${y(level.resistance)}`).join(" ");
+        make("polyline", { points: resistancePoints, fill: "none", class: "resistance-line" });
+        make("polyline", { points: supportPoints, fill: "none", class: "support-line" });
+
+        if (chartMode === "detailed") {
+          const barHalf = Math.max(3, Math.min(7, (width - pad.left - pad.right) / Math.max(1, visibleCandles.length) * 0.28));
+          visibleCandles.forEach((c, i) => {
+            const xx = x(i);
+            const color = c.close >= c.open ? "#00d66f" : "#ff454f";
+            make("line", { x1: xx, y1: y(c.low), x2: xx, y2: y(c.high), stroke: color, "stroke-width": 1.7, "stroke-linecap": "round", opacity: 0.96 });
+            make("line", { x1: xx - barHalf, y1: y(c.open), x2: xx, y2: y(c.open), stroke: color, "stroke-width": 1.7, "stroke-linecap": "round", opacity: 0.96 });
+            make("line", { x1: xx, y1: y(c.close), x2: xx + barHalf, y2: y(c.close), stroke: color, "stroke-width": 1.7, "stroke-linecap": "round", opacity: 0.96 });
+          });
+        }
+
+        const closePoints = visibleCandles.map((c, i) => ({ x: x(i), y: y(c.close) }));
+        if (chartMode === "simple") {
+          make("path", {
+            d: buildLine(closePoints, true),
+            fill: "none",
+            stroke: "#2f80ed",
+            "stroke-width": 3,
+            "stroke-linejoin": "round",
+            "stroke-linecap": "round"
+          });
+        }
+
+        const eventByDate = new Map(visibleEvents.map((e) => [e.date, e]));
+        visibleCandles.forEach((c, i) => {
+          const event = eventByDate.get(c.date);
+          if (!event) return;
+          const color = event.type === "bullish" ? "#16c784" : "#ff5a5f";
+          make("circle", { cx: x(i), cy: y(c.close), r: 6, fill: color, stroke: "#fff", "stroke-width": 2 });
+          const label = make("text", { x: x(i) + 8, y: y(c.close) - 8, fill: color, "font-size": 12, "font-weight": 800 });
+          label.textContent = event.event;
+        });
+
+        visibleEvents.slice(-5).forEach((event) => {
+          const chip = document.createElement("span");
+          chip.className = `event-chip ${event.type === "bearish" ? "bear" : ""}`;
+          chip.innerHTML = `<span></span>${event.event} (${formatDateLabel(event.date)})`;
+          legend.appendChild(chip);
+        });
+      }
+
+      async function analyze() {
+        const ticker = tickerSelect.value;
+        const range = document.querySelector("#rangeSelect").value;
+        const btn = document.querySelector("#analyzeBtn");
+        const errorPanel = document.querySelector("#analysisError");
+        btn.disabled = true;
+        btn.innerHTML = "Analyzing...";
+        errorPanel.classList.remove("show");
+        errorPanel.textContent = "";
+        try {
+          const response = await fetch(`/api/analyze?ticker=${encodeURIComponent(ticker)}&range=${encodeURIComponent(range)}`);
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.error || "Analysis failed");
+          renderAnalysis(data);
+        } catch (error) {
+          errorPanel.textContent = `Analysis service error: ${error.message}`;
+          errorPanel.classList.add("show");
+        } finally {
+          btn.disabled = false;
+          btn.innerHTML = '<svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>Analyze';
+        }
+      }
+
+      function renderAnalysis(data) {
+        document.querySelector("#analysisHero").classList.add("compact");
+        document.querySelector("#results").classList.add("show");
+        const biasClass = data.bias === "bullish" ? "bullish" : data.bias === "bearish" ? "bearish" : "neutral";
+        const action = data.bias === "bullish" ? "FAVOR PULLBACKS" : data.bias === "bearish" ? "DEFEND RISK" : "MONITOR CLOSELY";
+        document.querySelector("#stockName").textContent = data.ticker;
+        document.querySelector("#stockSummary").textContent = data.summary;
+        document.querySelector("#latestDate").textContent = data.latestDate;
+        document.querySelector("#actionBadge").textContent = action;
+        document.querySelector("#actionBadge").className = `badge ${biasClass}`;
+        document.querySelector("#biasText").textContent = data.bias[0].toUpperCase() + data.bias.slice(1);
+        document.querySelector("#biasText").className = biasClass;
+        document.querySelector("#actionCopy").textContent = data.summary;
+        const phaseText = document.querySelector("#phaseText");
+        phaseText.textContent = `Currently in ${data.phase}`;
+        phaseText.className = phaseClass(data.phase);
+        document.querySelector("#priceMetric").textContent = `$${data.price}`;
+        document.querySelector("#phaseMetric").textContent = data.phase;
+        document.querySelector("#returnMetric").textContent = `${data.periodReturn > 0 ? "+" : ""}${data.periodReturn}%`;
+        document.querySelector("#winMetric").textContent = `${data.backtest.winRate}%`;
+        document.querySelectorAll("#phaseLabels span").forEach((item, index) => item.classList.toggle("active-phase", index === phaseIndex(data.phase)));
+        document.querySelectorAll("#phaseDots span").forEach((item, index) => item.classList.toggle("active-dot", index === phaseIndex(data.phase)));
+        const events = document.querySelector("#events");
+        events.innerHTML = "";
+        if (!data.events.length) {
+          events.innerHTML = '<div class="event-item"><b>No major event</b><span>Current range needs more confirmation.</span></div>';
+        } else {
+          data.events.slice().reverse().forEach((event) => {
+            const node = document.createElement("div");
+            node.className = "event-item";
+            node.innerHTML = `<b class="${event.type === "bullish" ? "bullish" : "bearish"}">${event.event} at $${event.price}</b><span>${event.date} - volume ${event.volumeRatio}x</span>`;
+            events.appendChild(node);
+          });
+        }
+        currentAnalysis = data;
+        drawChart(data.candles, data.events, data.ticker);
+      }
+
+      document.querySelector("#analyzeBtn").addEventListener("click", analyze);
+      document.querySelector("#simpleChartBtn").addEventListener("click", () => {
+        chartMode = "simple";
+        if (currentAnalysis) drawChart(currentAnalysis.candles, currentAnalysis.events, currentAnalysis.ticker);
+      });
+      document.querySelector("#detailChartBtn").addEventListener("click", () => {
+        chartMode = "detailed";
+        if (currentAnalysis) drawChart(currentAnalysis.candles, currentAnalysis.events, currentAnalysis.ticker);
+      });
+
+      const initial = location.pathname.includes("analysis") ? "analysis" : location.pathname.includes("guide") ? "guide" : "chat";
+      setPage(initial);
+    </script>
+  </body>
+</html>
