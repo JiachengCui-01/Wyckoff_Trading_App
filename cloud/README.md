@@ -2,6 +2,18 @@
 
 This folder contains provider-neutral instructions for running the `ai_backend` FastAPI service on a cloud GPU.
 
+## Fastest Free Demo: Google Colab
+
+Open the Colab notebook from GitHub:
+
+```text
+https://colab.research.google.com/github/JiachengCui-01/Wyckoff_Trading_App/blob/main/cloud/colab_llama_backend.ipynb
+```
+
+Use `Runtime > Change runtime type > T4 GPU`, run the notebook cells from top to bottom, and copy the generated Cloudflare tunnel URL into Vercel as `LLAMA_BACKEND_URL`.
+
+Colab is good for demos, but the free runtime is temporary and the tunnel URL changes after restart. Use a paid GPU host for stable production service.
+
 ## Recommended GPU
 
 - Minimum practical target for LLaMA 7B + LoRA 4-bit: NVIDIA GPU with 12GB VRAM.
