@@ -1429,6 +1429,8 @@
       const modelStatusLabel = document.querySelector("#modelStatusLabel");
       const modelStatusDetail = document.querySelector("#modelStatusDetail");
       let llamaChatUrl = "";
+      let llamaMode = "fallback";
+      let modelStatusReady = null;
       let chartMode = "simple";
       let currentAnalysis = null;
 
@@ -1451,11 +1453,13 @@
           const data = await response.json();
           if (!response.ok) throw new Error(data.error || "Status check failed");
           const online = data.mode === "llama";
+          llamaMode = data.mode || "fallback";
           llamaChatUrl = online && data.chatUrl ? data.chatUrl : "";
           modelStatusDot.className = `dot ${online ? "" : "fallback"}`;
           modelStatusLabel.textContent = data.label || (online ? "LLaMA+LoRA Backend Online" : "Serverless Fallback Demo");
           modelStatusDetail.textContent = data.detail || (online ? "GPU model backend is connected." : "Using Vercel fallback mode.");
         } catch (error) {
+          llamaMode = "fallback";
           llamaChatUrl = "";
           modelStatusDot.className = "dot offline";
           modelStatusLabel.textContent = "Backend Status Unknown";
@@ -1463,8 +1467,10 @@
         }
       }
 
-      refreshModelStatus();
-      setInterval(refreshModelStatus, 45000);
+      modelStatusReady = refreshModelStatus();
+      setInterval(() => {
+        modelStatusReady = refreshModelStatus();
+      }, 45000);
 
       quickQuestions.forEach((question) => {
         const button = document.createElement("button");
@@ -1545,6 +1551,10 @@
       }
 
       async function sendChat(question) {
+        if (!llamaChatUrl && modelStatusReady) {
+          await modelStatusReady.catch(() => {});
+        }
+
         const payload = JSON.stringify({ question });
         const request = async (url) => {
           const response = await fetch(url, {
@@ -1562,8 +1572,12 @@
           try {
             return await request(llamaChatUrl);
           } catch (error) {
-            console.warn("Direct LLaMA backend request failed; using Vercel fallback.", error);
+            throw new Error(`Direct LLaMA backend request failed: ${error.message}. Keep the Colab tunnel running, then refresh the page.`);
           }
+        }
+
+        if (llamaMode === "llama") {
+          throw new Error("LLaMA backend is marked online, but the chat URL is not ready yet. Wait a moment and try again.");
         }
 
         return request("/api/chat?v=chatbot-stock-skill-v2");
