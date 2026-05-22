@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "lint": "node --check api/chat.js && node --check api/analyze.js && node --check api/skills/stockAnalysis.js"
+    "lint": "node --check api/chat.js && node --check api/analyze.js && node --check api/backend-status.js && node --check api/skills/stockAnalysis.js"
   },
   "engines": {
     "node": ">=18"

@@ -170,6 +170,22 @@
         line-height: 1.65;
       }
 
+      .model-status {
+        display: grid;
+        gap: 4px;
+      }
+
+      .model-status strong {
+        color: #e8eef6;
+        font-size: 13px;
+      }
+
+      .model-status span:last-child {
+        color: var(--muted-2);
+        font-size: 12px;
+        line-height: 1.45;
+      }
+
       .dot {
         display: inline-block;
         width: 11px;
@@ -177,6 +193,14 @@
         border-radius: 50%;
         background: var(--green);
         margin-right: 12px;
+      }
+
+      .dot.fallback {
+        background: var(--orange);
+      }
+
+      .dot.offline {
+        background: var(--red);
       }
 
       .main {
@@ -1173,7 +1197,10 @@
             Wyckoff Guide
           </button>
         </nav>
-        <div class="status"><span class="dot"></span>Backend Connected<br />Powered by knowledge retrieval and live market data</div>
+        <div class="status model-status" id="modelStatus">
+          <span><span class="dot fallback" id="modelStatusDot"></span><strong id="modelStatusLabel">Checking backend...</strong></span>
+          <span id="modelStatusDetail">Detecting LLaMA backend status.</span>
+        </div>
       </aside>
 
       <main class="main">
@@ -1360,6 +1387,9 @@
       const quickWrap = document.querySelector("#quickQuestions");
       const groupSelect = document.querySelector("#groupSelect");
       const tickerSelect = document.querySelector("#tickerSelect");
+      const modelStatusDot = document.querySelector("#modelStatusDot");
+      const modelStatusLabel = document.querySelector("#modelStatusLabel");
+      const modelStatusDetail = document.querySelector("#modelStatusDetail");
       let chartMode = "simple";
       let currentAnalysis = null;
 
@@ -1375,6 +1405,25 @@
 
       document.querySelectorAll("[data-page]").forEach((button) => button.addEventListener("click", () => setPage(button.dataset.page)));
       document.querySelector("#menuBtn").addEventListener("click", () => sidebar.classList.toggle("open"));
+
+      async function refreshModelStatus() {
+        try {
+          const response = await fetch("/api/backend-status?v=model-status-v1", { cache: "no-store" });
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.error || "Status check failed");
+          const online = data.mode === "llama";
+          modelStatusDot.className = `dot ${online ? "" : "fallback"}`;
+          modelStatusLabel.textContent = data.label || (online ? "LLaMA+LoRA Backend Online" : "Serverless Fallback Demo");
+          modelStatusDetail.textContent = data.detail || (online ? "GPU model backend is connected." : "Using Vercel fallback mode.");
+        } catch (error) {
+          modelStatusDot.className = "dot offline";
+          modelStatusLabel.textContent = "Backend Status Unknown";
+          modelStatusDetail.textContent = error.message;
+        }
+      }
+
+      refreshModelStatus();
+      setInterval(refreshModelStatus, 45000);
 
       quickQuestions.forEach((question) => {
         const button = document.createElement("button");
