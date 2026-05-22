@@ -8,6 +8,10 @@ const FALLBACK_ANSWER =
   "I could not find a high-confidence match in the Wyckoff knowledge base. Try asking about Springs, Selling Climax, accumulation, distribution, volume confirmation, or Phase A-E. For best results, please ask in English.";
 const LLAMA_BACKEND_URL = process.env.LLAMA_BACKEND_URL || "";
 
+export const config = {
+  maxDuration: 60
+};
+
 const TICKER_STOP_WORDS = new Set([
   "A", "AN", "AND", "ARE", "AS", "AT", "BUY", "CAN", "DO", "FOR", "HOW", "I", "IF",
   "IN", "IS", "IT", "ME", "MY", "NOW", "OF", "ON", "OR", "PRICE", "RISK", "SELL",

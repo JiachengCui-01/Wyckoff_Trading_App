@@ -1,11 +1,15 @@
 {
   "version": 2,
   "public": true,
-  "functions": {
-    "api/chat.js": {
-      "maxDuration": 60
+  "builds": [
+    {
+      "src": "api/*.js",
+      "use": "@vercel/node",
+      "config": {
+        "maxDuration": 60
+      }
     }
-  },
+  ],
   "cleanUrls": true,
   "routes": [
     {
