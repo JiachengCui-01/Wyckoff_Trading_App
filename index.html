@@ -1346,8 +1346,12 @@
         "climax", "sos", "sow", "lps", "lpsy", "upthrust", "absorption", "supply", "demand",
         "chart", "breakout", "breakdown", "institutional", "smart money", "law", "laws", "cause",
         "effect", "effort", "result", "method", "methodology", "pattern", "structure", "trend",
-        "composite man", "selling climax", "buying climax", "point and figure"
+        "composite man", "selling climax", "buying climax", "point and figure",
+        "stock", "ticker", "quote", "current", "now", "state", "status", "risk", "buy", "sell",
+        "股价", "股票", "代码", "当前", "现在", "状态", "阶段", "趋势", "风险", "能买吗", "可以买",
+        "买入", "卖出", "分析", "吸筹", "派发", "走势"
       ];
+      const stockQuestionPattern = /\b[A-Z]{1,5}(?:[.-][A-Z])?\b.*(price|stock|ticker|quote|current|now|phase|state|status|trend|risk|buy|sell|analysis|analyze)|(?:price|stock|ticker|quote|current|now|phase|state|status|trend|risk|buy|sell|analysis|analyze).*\b[A-Z]{1,5}(?:[.-][A-Z])?\b|股价|股票|当前|现在|状态|阶段|趋势|风险|能买吗|可以买|买入|卖出|分析|吸筹|派发|走势/i;
       const smallTalkPattern = /^(hi|hello|hey|yo|thanks|thank you|ok|okay|test|testing|who are you|good morning|good afternoon|good evening)[.!?\s]*$/i;
 
       const pageTitle = document.querySelector("#pageTitle");
@@ -1418,6 +1422,7 @@
         const normalized = normalizeChatQuestion(question).toLowerCase();
         if (!normalized) return false;
         if (smallTalkPattern.test(normalized)) return false;
+        if (stockQuestionPattern.test(question)) return true;
         return chatDomainTerms.some((term) => normalized.includes(term));
       }
 
@@ -1428,10 +1433,10 @@
           addMessage("bot", chatFallbackReply);
           return;
         }
-        addMessage("bot", "Analyzing Wyckoff knowledge base...");
+        addMessage("bot", stockQuestionPattern.test(cleanQuestion) ? "Analyzing stock data..." : "Analyzing Wyckoff knowledge base...");
         const pending = messages.lastElementChild;
         try {
-          const response = await fetch("/api/chat?v=chatbot-rag-rerank-v5", {
+          const response = await fetch("/api/chat?v=chatbot-stock-skill-v1", {
             method: "POST",
             cache: "no-store",
             headers: { "Content-Type": "application/json" },

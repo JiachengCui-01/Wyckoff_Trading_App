@@ -1,10 +1,26 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { runStockAnalysis, toSkillPayload } from "./skills/stockAnalysis.js";
 
 let qaCache;
-const CHAT_VERSION = "chatbot-rag-rerank-v5";
+const CHAT_VERSION = "chatbot-stock-skill-v1";
 const FALLBACK_ANSWER =
   "I could not find a high-confidence match in the Wyckoff knowledge base. Try asking about Springs, Selling Climax, accumulation, distribution, volume confirmation, or Phase A-E.";
+const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4.1-mini";
+
+const TICKER_STOP_WORDS = new Set([
+  "A", "AN", "AND", "ARE", "AS", "AT", "BUY", "CAN", "DO", "FOR", "HOW", "I", "IF",
+  "IN", "IS", "IT", "ME", "MY", "NOW", "OF", "ON", "OR", "PRICE", "RISK", "SELL",
+  "SHOULD", "STATE", "THE", "TO", "TRADE", "WHAT", "WHEN", "WHERE", "WHY", "WITH", "YOU"
+]);
+
+const KNOWN_TICKERS = new Set([
+  "AAPL", "MSFT", "GOOGL", "AMZN", "META", "NVDA", "JPM", "BAC", "GS", "V", "MA",
+  "SPY", "QQQ", "IWM", "DIA", "XLF", "COIN", "MSTR", "TSLA", "AMD", "NFLX", "DIS"
+]);
+
+const STOCK_INTENT_RE =
+  /\b(price|stock|ticker|quote|current|now|phase|state|status|trend|risk|buy|sell|entry|stop|analysis|analyze|market)\b|\u80a1\u4ef7|\u80a1\u7968|\u4ee3\u7801|\u5f53\u524d|\u73b0\u5728|\u72b6\u6001|\u9636\u6bb5|\u8d8b\u52bf|\u98ce\u9669|\u80fd\u4e70\u5417|\u53ef\u4ee5\u4e70|\u4e70\u5165|\u5356\u51fa|\u5206\u6790|\u5438\u7b79|\u6d3e\u53d1|\u8d70\u52bf/i;
 
 const STOP_WORDS = new Set([
   "a", "an", "and", "are", "as", "at", "be", "by", "can", "could", "did", "do", "does",
@@ -519,6 +535,186 @@ function findPinnedDefinitionMatch(query, qa) {
   return null;
 }
 
+function extractTicker(question) {
+  const raw = String(question || "");
+  const directMatches = raw.match(/\b[A-Z]{1,5}(?:[.-][A-Z])?\b/g) || [];
+  const direct = directMatches.find((value) => !TICKER_STOP_WORDS.has(value.toUpperCase()));
+  if (direct) return direct.toUpperCase();
+
+  const possibleMatches = raw.match(/\b[a-zA-Z]{1,5}(?:[.-][a-zA-Z])?\b/g) || [];
+  const known = possibleMatches
+    .map((value) => value.toUpperCase())
+    .find((value) => KNOWN_TICKERS.has(value));
+  return known || "";
+}
+
+function extractRange(question) {
+  const text = String(question || "").toUpperCase();
+  if (/\b(1M|1MO|ONE MONTH)\b|1\u4e2a\u6708|\u4e00\u4e2a\u6708/.test(text)) return "1M";
+  if (/\b(3M|3MO|THREE MONTHS?)\b|3\u4e2a\u6708|\u4e09\u4e2a\u6708/.test(text)) return "3M";
+  if (/\b(6M|6MO|SIX MONTHS?)\b|6\u4e2a\u6708|\u516d\u4e2a\u6708|\u534a\u5e74/.test(text)) return "6M";
+  if (/\b(2Y|2YR|TWO YEARS?)\b|2\u5e74|\u4e24\u5e74/.test(text)) return "2Y";
+  return "1Y";
+}
+
+function inferStockIntent(question) {
+  const text = String(question || "").toLowerCase();
+  if (/\b(risk|buy|sell|entry|stop|trade)\b|\u98ce\u9669|\u80fd\u4e70\u5417|\u53ef\u4ee5\u4e70|\u4e70\u5165|\u5356\u51fa|\u6b62\u635f|\u4ea4\u6613/.test(text)) return "risk";
+  if (/\b(phase|accumulation|distribution)\b|\u9636\u6bb5|\u5438\u7b79|\u6d3e\u53d1/.test(text)) return "phase";
+  if (/\b(state|status|trend|condition)\b|\u72b6\u6001|\u8d8b\u52bf|\u8d70\u52bf/.test(text)) return "state";
+  if (/\b(price|quote|current|now)\b|\u80a1\u4ef7|\u5f53\u524d|\u73b0\u5728/.test(text)) return "price";
+  return "summary";
+}
+
+function buildStockRequest(question) {
+  const ticker = extractTicker(question);
+  if (!ticker) return null;
+  if (!STOCK_INTENT_RE.test(question) && !KNOWN_TICKERS.has(ticker)) return null;
+  return {
+    ticker,
+    range: extractRange(question),
+    intent: inferStockIntent(question)
+  };
+}
+
+function isChineseQuestion(question) {
+  return /[\u3400-\u9FFF]/.test(question);
+}
+
+function formatStockFallbackAnswer(question, payload) {
+  const recentEvents = payload.events?.length
+    ? payload.events.map((event) => `${event.event} ${event.date} @ $${event.price}`).join("; ")
+    : "No major recent Wyckoff events detected";
+  const tradeNote =
+    payload.bias === "bullish"
+      ? "watch for confirmation on pullbacks near support and volume behavior"
+      : payload.bias === "bearish"
+        ? "risk is elevated, so wait for stopping action or a failed breakdown before considering bullish ideas"
+        : "wait for a clearer break from the trading range";
+
+  if (isChineseQuestion(question)) {
+    return `${payload.ticker} 截至 ${payload.latestDate} 的收盘价约为 $${payload.price}，所选周期回报为 ${payload.periodReturn}%。Wyckoff 判断为 ${payload.phase}，偏向 ${payload.bias}。\n\n${payload.summary}\n\n最近事件：${recentEvents}。\n\n风险提示：这只是教育用途的结构分析，不是投资建议；如果问题涉及买卖或入场，应继续用价格结构、成交量确认、失效位和大盘环境来验证。`;
+  }
+
+  return `${payload.ticker} closed at about $${payload.price} on ${payload.latestDate}. Over the selected range, it is ${payload.periodReturn}% and the Wyckoff read is ${payload.phase} with a ${payload.bias} bias.\n\n${payload.summary}\n\nRecent events: ${recentEvents}.\n\nRisk note: this is educational analysis, not financial advice; for trade decisions, ${tradeNote}.`;
+}
+
+async function runStockSkillForChat(question, fallbackRequest) {
+  const directPayload = async (request) => {
+    const result = await runStockAnalysis(request);
+    return toSkillPayload(result);
+  };
+
+  if (!process.env.OPENAI_API_KEY) {
+    const payload = await directPayload(fallbackRequest);
+    return {
+      answer: formatStockFallbackAnswer(question, payload),
+      confidence: 0.86,
+      context: [],
+      tools: [{ name: "stock_analysis", input: fallbackRequest, output: payload }]
+    };
+  }
+
+  try {
+    const { default: OpenAI } = await import("openai");
+    const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const tools = [
+      {
+        type: "function",
+        name: "stock_analysis",
+        description: "Fetch market data and return Wyckoff phase, bias, current price, recent events, and a simple backtest for one ticker.",
+        parameters: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            ticker: {
+              type: "string",
+              description: "Uppercase stock or ETF ticker, for example AAPL, TSLA, BRK.B, SPY."
+            },
+            range: {
+              type: "string",
+              enum: ["1M", "3M", "6M", "1Y", "2Y"],
+              description: "Analysis window."
+            },
+            intent: {
+              type: "string",
+              enum: ["price", "phase", "state", "risk", "summary"],
+              description: "The user's main request type."
+            }
+          },
+          required: ["ticker", "range", "intent"]
+        }
+      }
+    ];
+    const instructions =
+      "You are a Wyckoff stock-analysis assistant. For current price, stock state, phase, risk, entry, buy, or sell questions, call stock_analysis. Always mention the data date. Never give deterministic buy/sell orders. State that the result is educational analysis, not financial advice. Reply in the user's language.";
+    const firstInput = [
+      {
+        role: "user",
+        content: `User question: ${question}\nFallback structured input if needed: ${JSON.stringify(fallbackRequest)}`
+      }
+    ];
+    const first = await client.responses.create({
+      model: OPENAI_MODEL,
+      instructions,
+      tools,
+      input: firstInput
+    });
+    const toolCalls = (first.output || []).filter((item) => item.type === "function_call");
+
+    if (!toolCalls.length) {
+      const payload = await directPayload(fallbackRequest);
+      return {
+        answer: formatStockFallbackAnswer(question, payload),
+        confidence: 0.86,
+        context: [],
+        tools: [{ name: "stock_analysis", input: fallbackRequest, output: payload }]
+      };
+    }
+
+    const toolOutputs = [];
+    const toolLog = [];
+    for (const call of toolCalls) {
+      if (call.name !== "stock_analysis") continue;
+      const args = JSON.parse(call.arguments || "{}");
+      const input = {
+        ticker: args.ticker || fallbackRequest.ticker,
+        range: args.range || fallbackRequest.range,
+        intent: args.intent || fallbackRequest.intent
+      };
+      const payload = await directPayload(input);
+      toolLog.push({ name: "stock_analysis", input, output: payload });
+      toolOutputs.push({
+        type: "function_call_output",
+        call_id: call.call_id,
+        output: JSON.stringify(payload)
+      });
+    }
+
+    const second = await client.responses.create({
+      model: OPENAI_MODEL,
+      instructions,
+      tools,
+      input: [...firstInput, ...first.output, ...toolOutputs]
+    });
+
+    return {
+      answer: second.output_text || formatStockFallbackAnswer(question, toolLog[0].output),
+      confidence: 0.9,
+      context: [],
+      tools: toolLog
+    };
+  } catch (error) {
+    const payload = await directPayload(fallbackRequest);
+    return {
+      answer: `${formatStockFallbackAnswer(question, payload)}\n\nLLM tool orchestration was unavailable, so this response uses the stock_analysis skill output directly.`,
+      confidence: 0.82,
+      context: [],
+      tools: [{ name: "stock_analysis", input: fallbackRequest, output: payload, error: error.message }]
+    };
+  }
+}
+
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
@@ -534,6 +730,15 @@ export default async function handler(req, res) {
     const question = normalizeQuestion(body.question || "");
 
     if (!question) return res.status(400).json({ error: "Question is required" });
+
+    const stockRequest = buildStockRequest(question);
+    if (stockRequest) {
+      const stockResult = await runStockSkillForChat(question, stockRequest);
+      return res.status(200).json({
+        ...stockResult,
+        version: CHAT_VERSION
+      });
+    }
 
     const queryText = normalizeText(question);
     const queryTokens = tokenize(question);
