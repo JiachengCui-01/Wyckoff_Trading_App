@@ -1,0 +1,36 @@
+FROM nvidia/cuda:12.1.1-cudnn8-runtime-ubuntu22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
+ENV HF_HOME=/app/.cache/huggingface
+ENV PIP_NO_CACHE_DIR=1
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 \
+    python3-pip \
+    python3-dev \
+    git \
+    curl \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN python3 -m pip install --upgrade pip
+
+# CUDA PyTorch wheel. Check https://pytorch.org/get-started/locally/ if your GPU host needs a newer CUDA wheel.
+RUN python3 -m pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+
+COPY requirements-ai.txt ./
+RUN python3 -m pip install -r requirements-ai.txt
+
+COPY ai_backend ./ai_backend
+COPY data ./data
+COPY scripts ./scripts
+COPY cloud ./cloud
+
+RUN chmod +x cloud/start_ai_backend.sh
+
+EXPOSE 8000
+
+CMD ["bash", "cloud/start_ai_backend.sh"]

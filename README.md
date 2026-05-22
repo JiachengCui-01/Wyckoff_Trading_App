@@ -61,6 +61,36 @@ set LLAMA_BACKEND_URL=http://127.0.0.1:8000
 
 The frontend still calls `/api/chat`. The Vercel function forwards to the LLaMA backend first, then falls back to the lightweight implementation if needed.
 
+## Cloud GPU Backend
+
+For public or realistic LLaMA+LoRA inference, run `ai_backend` on a Linux NVIDIA GPU host. Vercel cannot load the model itself.
+
+Provider-neutral Docker files are included:
+
+- `Dockerfile.ai`
+- `cloud/start_ai_backend.sh`
+- `cloud/README.md`
+
+Build and run on a GPU host:
+
+```bash
+docker build -f Dockerfile.ai -t wyckoff-llama-backend .
+docker run --gpus all -p 8000:8000 \
+  -e HF_TOKEN=$HF_TOKEN \
+  -e LLAMA_BASE_MODEL=meta-llama/Llama-2-7b-hf \
+  -e LLAMA_LORA_PATH=/app/models/llama_wyckoff_lora \
+  -v /path/to/llama_wyckoff_lora:/app/models/llama_wyckoff_lora \
+  wyckoff-llama-backend
+```
+
+Once the GPU backend has a public HTTPS URL, set Vercel:
+
+```text
+LLAMA_BACKEND_URL=https://your-gpu-backend.example.com
+```
+
+Then redeploy Vercel.
+
 ## Chat Flow
 
 1. User asks a question in the existing ChatBot UI.

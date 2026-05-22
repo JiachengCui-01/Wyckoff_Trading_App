@@ -1,0 +1,12 @@
+.git
+.vercel
+node_modules
+__pycache__
+*.pyc
+report_render_en
+models
+data/rag_index
+.cache
+*.docx
+preview-*.log
+preview-*.err.log
