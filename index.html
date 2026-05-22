@@ -88,15 +88,16 @@
       }
 
       .app {
-        display: grid;
-        grid-template-columns: 328px 1fr;
+        display: block;
         height: 100vh;
         overflow: hidden;
       }
 
       .sidebar {
-        position: sticky;
-        top: 0;
+        position: fixed;
+        inset: 0 auto 0 0;
+        width: 328px;
+        z-index: 30;
         border-right: 1px solid var(--line);
         background:
           linear-gradient(180deg, rgba(255, 255, 255, 0.045), transparent 28%),
@@ -214,6 +215,7 @@
       }
 
       .main {
+        margin-left: 328px;
         min-width: 0;
         height: 100vh;
         min-height: 0;
@@ -275,7 +277,7 @@
       .chat-wrap {
         flex: 1;
         display: grid;
-        grid-template-rows: 1fr auto;
+        grid-template-rows: minmax(0, 1fr) auto;
         height: calc(100vh - 86px);
         min-height: 0;
         overflow: hidden;
@@ -328,6 +330,7 @@
 
       .messages {
         width: min(920px, calc(100% - 48px));
+        height: 100%;
         margin: 0 auto;
         padding: 36px 0 130px;
         display: none;
@@ -1087,6 +1090,10 @@
           display: block;
         }
 
+        .main {
+          margin-left: 0;
+        }
+
         .sidebar {
           position: fixed;
           inset: 0 auto 0 0;
@@ -1482,9 +1489,14 @@
       }
 
       function scrollChatToBottom(behavior = "smooth") {
-        requestAnimationFrame(() => {
+        const scroll = () => {
           messages.scrollTo({ top: messages.scrollHeight, behavior });
+        };
+        scroll();
+        requestAnimationFrame(() => {
+          scroll();
         });
+        window.setTimeout(scroll, 80);
       }
 
       function cleanBotAnswer(content) {
