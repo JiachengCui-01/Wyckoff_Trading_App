@@ -78,6 +78,8 @@ class LlamaLoraEngine:
         if self.mock:
             return self._mock_generate(prompt)
 
+        import torch
+
         self.initialize()
         assert self.model is not None
         assert self.tokenizer is not None
