@@ -24,7 +24,6 @@ Prepare model files:
 
 - Base model: configure `LLAMA_BASE_MODEL`, for example `meta-llama/Llama-2-7b-hf`.
 - LoRA adapter: place the trained adapter at `models/llama_wyckoff_lora/` or set `LLAMA_LORA_PATH`.
-- Do not commit base model or adapter weights to GitHub.
 
 Build the offline RAG index once:
 
