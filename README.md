@@ -19,7 +19,7 @@ Vercel is the display/proxy layer. LLaMA+LoRA runs in Python on a local machine,
 3. FastAPI uses LLaMA+LoRA to classify intent:
    - `rag`: hybrid BM25 + dense embedding retrieval, top-k, rerank, LLaMA answer generation.
    - `stock_analysis`: structured ticker/range/intent input, Python stock skill, LLaMA answer generation.
-   - `fallback`: English fallback message.
+   - `fallback`: open-ended LLaMA answer generation for general questions.
 4. The UI displays the returned answer without layout changes.
 
 ## Training

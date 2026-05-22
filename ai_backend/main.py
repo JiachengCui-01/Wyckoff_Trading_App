@@ -12,8 +12,7 @@ from .schemas import ChatRequest, ChatResponse, RagContext, ToolCall
 from .skills.stock_analysis import run_stock_analysis
 
 
-VERSION = "llama-lora-hybrid-rag-v1"
-FALLBACK = "I could not find a high-confidence Wyckoff match. Please ask about Wyckoff methodology, market phases, or a concrete stock ticker in English."
+VERSION = "llama-lora-three-route-agent-v2"
 
 app = FastAPI(title="Wyckoff LLaMA Chat Backend", version=VERSION)
 app.add_middleware(
@@ -61,7 +60,8 @@ def chat(request: ChatRequest) -> ChatResponse:
             version=VERSION,
         )
 
-    return ChatResponse(answer=FALLBACK, intent="fallback", confidence=intent.confidence, version=VERSION)
+    answer = generate_general_answer(question)
+    return ChatResponse(answer=answer, intent="fallback", confidence=intent.confidence, version=VERSION)
 
 
 def generate_rag_answer(question: str, contexts: list[RagContext]) -> str:
@@ -99,3 +99,17 @@ Answer:
 """
     return llm_engine.generate(prompt).strip()
 
+
+def generate_general_answer(question: str) -> str:
+    prompt = f"""
+You are a helpful general-purpose assistant inside a Wyckoff trading application.
+Answer the user's non-Wyckoff or low-confidence question directly in English.
+Keep the answer concise and useful.
+If the user asks for financial advice without a concrete ticker analysis, do not give deterministic buy or sell instructions.
+At the end, briefly mention that you can also help with Wyckoff methodology questions and stock analysis.
+
+User question: {question}
+
+Answer:
+"""
+    return llm_engine.generate(prompt).strip()

@@ -34,7 +34,7 @@ class ChatResponse(BaseModel):
     confidence: float = 0.0
     context: list[RagContext] = Field(default_factory=list)
     tools: list[ToolCall] = Field(default_factory=list)
-    version: str = "llama-lora-hybrid-rag-v1"
+    version: str = "llama-lora-three-route-agent-v2"
 
 
 class IntentResult(BaseModel):
@@ -43,4 +43,3 @@ class IntentResult(BaseModel):
     ticker: str | None = None
     range: RangeLabel = "1Y"
     stock_intent: StockIntent = "summary"
-
