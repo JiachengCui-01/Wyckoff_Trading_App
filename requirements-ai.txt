@@ -1,0 +1,18 @@
+# LLaMA + LoRA backend
+fastapi>=0.111.0
+uvicorn[standard]>=0.30.0
+pydantic>=2.7.0
+torch>=2.0.0
+transformers>=4.36.0
+peft>=0.7.0
+bitsandbytes>=0.41.0
+accelerate>=0.25.0
+
+# Hybrid RAG
+sentence-transformers>=2.2.2
+rank-bm25>=0.2.2
+numpy>=1.24.0
+pandas>=2.0.0
+
+# Stock skill
+yfinance>=0.2.33

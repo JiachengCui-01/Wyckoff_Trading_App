@@ -6,7 +6,7 @@ let qaCache;
 const CHAT_VERSION = "chatbot-stock-skill-v2";
 const FALLBACK_ANSWER =
   "I could not find a high-confidence match in the Wyckoff knowledge base. Try asking about Springs, Selling Climax, accumulation, distribution, volume confirmation, or Phase A-E. For best results, please ask in English.";
-const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4.1-mini";
+const LLAMA_BACKEND_URL = process.env.LLAMA_BACKEND_URL || "";
 
 const TICKER_STOP_WORDS = new Set([
   "A", "AN", "AND", "ARE", "AS", "AT", "BUY", "CAN", "DO", "FOR", "HOW", "I", "IF",
@@ -570,12 +570,11 @@ function buildStockRequest(question) {
   const ticker = extractTicker(question);
   if (!ticker) return null;
   const hasEnglishIntent = STOCK_INTENT_RE.test(question);
-  if (!hasEnglishIntent && !process.env.OPENAI_API_KEY) return null;
+  if (!hasEnglishIntent) return null;
   return {
     ticker,
     range: extractRange(question),
-    intent: hasEnglishIntent ? inferStockIntent(question) : "summary",
-    requiresLlmIntent: !hasEnglishIntent
+    intent: inferStockIntent(question)
   };
 }
 
@@ -596,135 +595,31 @@ function formatStockFallbackAnswer(payload) {
 async function runStockSkillForChat(question, fallbackRequest) {
   const visibleInput = ({ ticker, range, intent }) => ({ ticker, range, intent });
   const directPayload = async (request) => {
-    const { requiresLlmIntent, ...skillInput } = request;
-    const result = await runStockAnalysis(skillInput);
+    const result = await runStockAnalysis(request);
     return toSkillPayload(result);
   };
 
-  if (!process.env.OPENAI_API_KEY) {
-    const payload = await directPayload(fallbackRequest);
-    return {
-      answer: formatStockFallbackAnswer(payload),
-      confidence: 0.86,
-      context: [],
-      tools: [{ name: "stock_analysis", input: visibleInput(fallbackRequest), output: payload }]
-    };
+  const payload = await directPayload(fallbackRequest);
+  return {
+    answer: formatStockFallbackAnswer(payload),
+    confidence: 0.86,
+    context: [],
+    tools: [{ name: "stock_analysis", input: visibleInput(fallbackRequest), output: payload }]
+  };
+}
+
+async function proxyToLlamaBackend(question) {
+  if (!LLAMA_BACKEND_URL) return null;
+  const url = new URL("/chat", LLAMA_BACKEND_URL.endsWith("/") ? LLAMA_BACKEND_URL : `${LLAMA_BACKEND_URL}/`);
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ question })
+  });
+  if (!response.ok) {
+    throw new Error(`LLaMA backend returned ${response.status}`);
   }
-
-  try {
-    const { default: OpenAI } = await import("openai");
-    const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-    const tools = [
-      {
-        type: "function",
-        name: "stock_analysis",
-        description: "Fetch market data and return Wyckoff phase, bias, current price, recent events, and a simple backtest for one ticker.",
-        parameters: {
-          type: "object",
-          additionalProperties: false,
-          properties: {
-            ticker: {
-              type: "string",
-              description: "Uppercase stock or ETF ticker, for example AAPL, TSLA, BRK.B, SPY."
-            },
-            range: {
-              type: "string",
-              enum: ["1M", "3M", "6M", "1Y", "2Y"],
-              description: "Analysis window."
-            },
-            intent: {
-              type: "string",
-              enum: ["price", "phase", "state", "risk", "summary"],
-              description: "The user's main request type."
-            }
-          },
-          required: ["ticker", "range", "intent"]
-        }
-      }
-    ];
-    const instructions =
-      "You are a Wyckoff stock-analysis assistant. For current price, stock state, phase, risk, entry, buy, or sell questions, call stock_analysis. Always mention the data date. Never give deterministic buy/sell orders. State that the result is educational analysis, not financial advice. Always reply in English.";
-    const firstInput = [
-      {
-        role: "user",
-        content: `User question: ${question}\nFallback structured input if needed: ${JSON.stringify(fallbackRequest)}`
-      }
-    ];
-    const first = await client.responses.create({
-      model: OPENAI_MODEL,
-      instructions,
-      tools,
-      input: firstInput
-    });
-    const toolCalls = (first.output || []).filter((item) => item.type === "function_call");
-
-    if (!toolCalls.length) {
-      if (fallbackRequest.requiresLlmIntent) {
-        return {
-          answer: FALLBACK_ANSWER,
-          confidence: 0.2,
-          context: [],
-          tools: []
-        };
-      }
-      const payload = await directPayload(fallbackRequest);
-      return {
-          answer: formatStockFallbackAnswer(payload),
-          confidence: 0.86,
-          context: [],
-          tools: [{ name: "stock_analysis", input: visibleInput(fallbackRequest), output: payload }]
-      };
-    }
-
-    const toolOutputs = [];
-    const toolLog = [];
-    for (const call of toolCalls) {
-      if (call.name !== "stock_analysis") continue;
-      const args = JSON.parse(call.arguments || "{}");
-      const input = {
-        ticker: args.ticker || fallbackRequest.ticker,
-        range: args.range || fallbackRequest.range,
-        intent: args.intent || fallbackRequest.intent
-      };
-      const payload = await directPayload(input);
-      toolLog.push({ name: "stock_analysis", input, output: payload });
-      toolOutputs.push({
-        type: "function_call_output",
-        call_id: call.call_id,
-        output: JSON.stringify(payload)
-      });
-    }
-
-    const second = await client.responses.create({
-      model: OPENAI_MODEL,
-      instructions,
-      tools,
-      input: [...firstInput, ...first.output, ...toolOutputs]
-    });
-
-    return {
-      answer: second.output_text || formatStockFallbackAnswer(toolLog[0].output),
-      confidence: 0.9,
-      context: [],
-      tools: toolLog
-    };
-  } catch (error) {
-    if (fallbackRequest.requiresLlmIntent) {
-      return {
-        answer: FALLBACK_ANSWER,
-        confidence: 0.2,
-        context: [],
-        tools: []
-      };
-    }
-    const payload = await directPayload(fallbackRequest);
-    return {
-      answer: `${formatStockFallbackAnswer(payload)}\n\nLLM tool orchestration was unavailable, so this response uses the stock_analysis skill output directly.`,
-      confidence: 0.82,
-      context: [],
-      tools: [{ name: "stock_analysis", input: visibleInput(fallbackRequest), output: payload, error: error.message }]
-    };
-  }
+  return response.json();
 }
 
 export default async function handler(req, res) {
@@ -742,6 +637,18 @@ export default async function handler(req, res) {
     const question = normalizeQuestion(body.question || "");
 
     if (!question) return res.status(400).json({ error: "Question is required" });
+
+    try {
+      const llamaResult = await proxyToLlamaBackend(question);
+      if (llamaResult) {
+        return res.status(200).json({
+          ...llamaResult,
+          version: llamaResult.version || "llama-lora-hybrid-rag-v1"
+        });
+      }
+    } catch (proxyError) {
+      res.setHeader("X-Llama-Backend-Fallback", proxyError.message || "unavailable");
+    }
 
     const stockRequest = buildStockRequest(question);
     if (stockRequest) {

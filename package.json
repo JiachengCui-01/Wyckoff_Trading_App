@@ -6,9 +6,6 @@
   "scripts": {
     "lint": "node --check api/chat.js && node --check api/analyze.js && node --check api/skills/stockAnalysis.js"
   },
-  "dependencies": {
-    "openai": "^5.0.0"
-  },
   "engines": {
     "node": ">=18"
   }

@@ -6,3 +6,6 @@ __pycache__/
 *.pyc
 preview-*.log
 preview-*.err.log
+models/
+*.safetensors
+*.bin
