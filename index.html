@@ -36,6 +36,12 @@
         box-sizing: border-box;
       }
 
+      html,
+      body {
+        height: 100%;
+        overflow: hidden;
+      }
+
       body {
         margin: 0;
         min-height: 100vh;
@@ -84,10 +90,13 @@
       .app {
         display: grid;
         grid-template-columns: 328px 1fr;
-        min-height: 100vh;
+        height: 100vh;
+        overflow: hidden;
       }
 
       .sidebar {
+        position: sticky;
+        top: 0;
         border-right: 1px solid var(--line);
         background:
           linear-gradient(180deg, rgba(255, 255, 255, 0.045), transparent 28%),
@@ -96,7 +105,8 @@
         -webkit-backdrop-filter: blur(24px) saturate(1.15);
         display: flex;
         flex-direction: column;
-        min-height: 100vh;
+        height: 100vh;
+        overflow: hidden;
         box-shadow: 14px 0 44px rgba(0, 0, 0, 0.18);
       }
 
@@ -205,6 +215,9 @@
 
       .main {
         min-width: 0;
+        height: 100vh;
+        min-height: 0;
+        overflow: hidden;
         display: flex;
         flex-direction: column;
       }
@@ -243,6 +256,7 @@
         display: none;
         flex: 1;
         min-height: 0;
+        overflow: hidden;
       }
 
       .page.active {
@@ -254,13 +268,17 @@
         display: grid;
         place-items: center;
         padding: 36px;
+        min-height: 0;
+        overflow-y: auto;
       }
 
       .chat-wrap {
         flex: 1;
         display: grid;
         grid-template-rows: 1fr auto;
-        min-height: calc(100vh - 86px);
+        height: calc(100vh - 86px);
+        min-height: 0;
+        overflow: hidden;
       }
 
       .welcome {
@@ -315,6 +333,10 @@
         display: none;
         gap: 18px;
         align-content: start;
+        min-height: 0;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        scroll-behavior: smooth;
       }
 
       .messages.show {
@@ -364,8 +386,6 @@
       }
 
       .chat-input {
-        position: sticky;
-        bottom: 0;
         border-top: 1px solid rgba(255, 255, 255, 0.14);
         background:
           linear-gradient(110deg, rgba(255, 255, 255, 0.08), transparent 34%),
@@ -442,12 +462,19 @@
 
       .analysis-page {
         display: none;
+        flex: 1;
+        min-height: 0;
         flex-direction: column;
         overflow: auto;
       }
 
       .analysis-page.active {
         display: flex;
+      }
+
+      #guidePage {
+        overflow-y: auto;
+        overscroll-behavior: contain;
       }
 
       .analysis-hero {
@@ -1086,6 +1113,10 @@
           font-size: 22px;
         }
 
+        .chat-wrap {
+          height: calc(100vh - 78px);
+        }
+
         .backend-pill {
           display: none;
         }
@@ -1447,7 +1478,13 @@
         node.className = `message ${role}`;
         node.textContent = role === "bot" ? cleanBotAnswer(content) : content;
         messages.appendChild(node);
-        node.scrollIntoView({ behavior: "smooth", block: "end" });
+        scrollChatToBottom();
+      }
+
+      function scrollChatToBottom(behavior = "smooth") {
+        requestAnimationFrame(() => {
+          messages.scrollTo({ top: messages.scrollHeight, behavior });
+        });
       }
 
       function cleanBotAnswer(content) {
@@ -1478,11 +1515,9 @@
       async function ask(question) {
         const cleanQuestion = normalizeChatQuestion(question);
         addMessage("user", cleanQuestion);
-        if (!isWyckoffQuestion(cleanQuestion)) {
-          addMessage("bot", chatFallbackReply);
-          return;
-        }
-        addMessage("bot", stockQuestionPattern.test(cleanQuestion) ? "Analyzing stock data..." : "Analyzing Wyckoff knowledge base...");
+        const stockQuestion = stockQuestionPattern.test(cleanQuestion) || knownTickerPattern.test(cleanQuestion);
+        const domainQuestion = isWyckoffQuestion(cleanQuestion);
+        addMessage("bot", stockQuestion ? "Analyzing stock data..." : domainQuestion ? "Analyzing Wyckoff knowledge base..." : "Thinking...");
         const pending = messages.lastElementChild;
         try {
           const response = await fetch("/api/chat?v=chatbot-stock-skill-v2", {
@@ -1494,13 +1529,10 @@
           const data = await response.json();
           pending.remove();
           if (!response.ok) throw new Error(data.error || "Chat failed");
-          if (!isWyckoffQuestion(cleanQuestion)) {
-            addMessage("bot", chatFallbackReply);
-            return;
-          }
           addMessage("bot", data.answer);
         } catch (error) {
           pending.textContent = `Chat service error: ${error.message}`;
+          scrollChatToBottom();
         }
       }
 
