@@ -1551,10 +1551,6 @@
       }
 
       async function sendChat(question) {
-        if (!llamaChatUrl && modelStatusReady) {
-          await modelStatusReady.catch(() => {});
-        }
-
         const payload = JSON.stringify({ question });
         const request = async (url) => {
           const response = await fetch(url, {
@@ -1568,19 +1564,11 @@
           return data;
         };
 
-        if (llamaChatUrl) {
-          try {
-            return await request(llamaChatUrl);
-          } catch (error) {
-            throw new Error(`Direct LLaMA backend request failed: ${error.message}. Keep the Colab tunnel running, then refresh the page.`);
-          }
+        if (modelStatusReady) {
+          await modelStatusReady.catch(() => {});
         }
 
-        if (llamaMode === "llama") {
-          throw new Error("LLaMA backend is marked online, but the chat URL is not ready yet. Wait a moment and try again.");
-        }
-
-        return request("/api/chat?v=chatbot-stock-skill-v2");
+        return request("/api/chat?v=chatbot-stock-skill-v3");
       }
 
       document.querySelector("#chatForm").addEventListener("submit", (event) => {

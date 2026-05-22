@@ -614,7 +614,8 @@ async function proxyToLlamaBackend(question) {
   const response = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ question })
+    body: JSON.stringify({ question }),
+    signal: AbortSignal.timeout(55000)
   });
   if (!response.ok) {
     throw new Error(`LLaMA backend returned ${response.status}`);

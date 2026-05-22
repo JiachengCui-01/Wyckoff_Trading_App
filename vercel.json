@@ -7,6 +7,11 @@
       "use": "@vercel/node"
     }
   ],
+  "functions": {
+    "api/chat.js": {
+      "maxDuration": 60
+    }
+  },
   "cleanUrls": true,
   "routes": [
     {

@@ -5,7 +5,7 @@ import json
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .llm import llm_engine
+from .llm import GenerationConfig, llm_engine
 from .rag import rag_store
 from .router import classify_intent
 from .schemas import ChatRequest, ChatResponse, RagContext, ToolCall
@@ -81,7 +81,7 @@ User question: {question}
 
 Answer:
 """
-    return llm_engine.generate(prompt).strip()
+    return llm_engine.generate(prompt, GenerationConfig(max_new_tokens=180, temperature=0.2)).strip()
 
 
 def generate_stock_answer(question: str, output: dict) -> str:
@@ -97,7 +97,7 @@ stock_analysis JSON:
 
 Answer:
 """
-    return llm_engine.generate(prompt).strip()
+    return llm_engine.generate(prompt, GenerationConfig(max_new_tokens=180, temperature=0.2)).strip()
 
 
 def generate_general_answer(question: str) -> str:
@@ -112,4 +112,4 @@ User question: {question}
 
 Answer:
 """
-    return llm_engine.generate(prompt).strip()
+    return llm_engine.generate(prompt, GenerationConfig(max_new_tokens=140, temperature=0.3)).strip()

@@ -15,6 +15,5 @@ RERANK_MODEL = os.getenv("RERANK_MODEL", "cross-encoder/ms-marco-MiniLM-L-6-v2")
 DEFAULT_TOP_K = int(os.getenv("RAG_TOP_K", "5"))
 RETRIEVAL_POOL = int(os.getenv("RAG_RETRIEVAL_POOL", "16"))
 MAX_CONTEXT_ITEMS = int(os.getenv("RAG_MAX_CONTEXT_ITEMS", "5"))
-MAX_NEW_TOKENS = int(os.getenv("LLAMA_MAX_NEW_TOKENS", "320"))
+MAX_NEW_TOKENS = int(os.getenv("LLAMA_MAX_NEW_TOKENS", "180"))
 TEMPERATURE = float(os.getenv("LLAMA_TEMPERATURE", "0.2"))
-
