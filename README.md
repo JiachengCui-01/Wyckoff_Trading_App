@@ -24,9 +24,29 @@ Vercel is the display/proxy layer. LLaMA+LoRA runs in Python on a local machine,
 
 ## Training
 
-Default inference does not require retraining. Users should load the already trained LoRA adapter.
+Default inference does not require retraining. Users should load the already trained LoRA adapter when it is available.
 
-Training or reproducing the LoRA adapter is a separate workflow and should output adapter files into `models/llama_wyckoff_lora/`.
+To train or reproduce the LoRA adapter on a GPU machine:
+
+```bash
+python scripts/train_lora.py \
+  --base-model meta-llama/Llama-2-7b-hf \
+  --output-dir models/llama_wyckoff_lora \
+  --epochs 2 \
+  --batch-size 1 \
+  --gradient-accumulation-steps 8
+```
+
+The script reads `data/wyckoff_all_labels_combined.csv`, creates RAG-answer and intent-classification samples, and saves the adapter to `models/llama_wyckoff_lora/`.
+
+For Colab, save the output to Google Drive:
+
+```bash
+python scripts/train_lora.py \
+  --output-dir /content/drive/MyDrive/wyckoff_models/llama_wyckoff_lora
+```
+
+Do not commit base model weights or LoRA adapter files to GitHub.
 
 ## Notes
 

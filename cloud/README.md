@@ -14,6 +14,12 @@ Use `Runtime > Change runtime type > T4 GPU`, run the notebook cells from top to
 
 Colab is good for demos, but the free runtime is temporary and the tunnel URL changes after restart. Use a paid GPU host for stable production service.
 
+If you do not have a trained adapter yet, run the notebook's QLoRA training cell first. It saves the adapter to:
+
+```text
+/content/drive/MyDrive/wyckoff_models/llama_wyckoff_lora
+```
+
 ## Recommended GPU
 
 - Minimum practical target for LLaMA 7B + LoRA 4-bit: NVIDIA GPU with 12GB VRAM.
