@@ -1339,7 +1339,7 @@
       ];
 
       const chatFallbackReply =
-        "I could not find a high-confidence match in the Wyckoff knowledge base. Try asking about Springs, Selling Climax, accumulation, distribution, volume confirmation, or Phase A-E.";
+        "I could not find a high-confidence match in the Wyckoff knowledge base. Try asking about Springs, Selling Climax, accumulation, distribution, volume confirmation, or Phase A-E. For best results, please ask in English.";
       const chatDomainTerms = [
         "wyckoff", "accumulation", "distribution", "spring", "phase", "volume", "price", "support",
         "resistance", "trading", "trade", "entry", "exit", "risk", "markup", "markdown", "range",
@@ -1347,11 +1347,10 @@
         "chart", "breakout", "breakdown", "institutional", "smart money", "law", "laws", "cause",
         "effect", "effort", "result", "method", "methodology", "pattern", "structure", "trend",
         "composite man", "selling climax", "buying climax", "point and figure",
-        "stock", "ticker", "quote", "current", "now", "state", "status", "risk", "buy", "sell",
-        "股价", "股票", "代码", "当前", "现在", "状态", "阶段", "趋势", "风险", "能买吗", "可以买",
-        "买入", "卖出", "分析", "吸筹", "派发", "走势"
+        "stock", "ticker", "quote", "current", "now", "state", "status", "risk", "buy", "sell"
       ];
-      const stockQuestionPattern = /\b[A-Z]{1,5}(?:[.-][A-Z])?\b.*(price|stock|ticker|quote|current|now|phase|state|status|trend|risk|buy|sell|analysis|analyze)|(?:price|stock|ticker|quote|current|now|phase|state|status|trend|risk|buy|sell|analysis|analyze).*\b[A-Z]{1,5}(?:[.-][A-Z])?\b|股价|股票|当前|现在|状态|阶段|趋势|风险|能买吗|可以买|买入|卖出|分析|吸筹|派发|走势/i;
+      const stockQuestionPattern = /\b[A-Z]{1,5}(?:[.-][A-Z])?\b.*(price|stock|ticker|quote|current|now|phase|state|status|trend|risk|buy|sell|analysis|analyze)|(?:price|stock|ticker|quote|current|now|phase|state|status|trend|risk|buy|sell|analysis|analyze).*\b[A-Z]{1,5}(?:[.-][A-Z])?\b/i;
+      const knownTickerPattern = /\b(AAPL|MSFT|GOOGL|AMZN|META|NVDA|JPM|BAC|GS|V|MA|SPY|QQQ|IWM|DIA|XLF|COIN|MSTR|TSLA|AMD|NFLX|DIS)\b/i;
       const smallTalkPattern = /^(hi|hello|hey|yo|thanks|thank you|ok|okay|test|testing|who are you|good morning|good afternoon|good evening)[.!?\s]*$/i;
 
       const pageTitle = document.querySelector("#pageTitle");
@@ -1422,6 +1421,7 @@
         const normalized = normalizeChatQuestion(question).toLowerCase();
         if (!normalized) return false;
         if (smallTalkPattern.test(normalized)) return false;
+        if (knownTickerPattern.test(question)) return true;
         if (stockQuestionPattern.test(question)) return true;
         return chatDomainTerms.some((term) => normalized.includes(term));
       }
@@ -1436,7 +1436,7 @@
         addMessage("bot", stockQuestionPattern.test(cleanQuestion) ? "Analyzing stock data..." : "Analyzing Wyckoff knowledge base...");
         const pending = messages.lastElementChild;
         try {
-          const response = await fetch("/api/chat?v=chatbot-stock-skill-v1", {
+          const response = await fetch("/api/chat?v=chatbot-stock-skill-v2", {
             method: "POST",
             cache: "no-store",
             headers: { "Content-Type": "application/json" },
