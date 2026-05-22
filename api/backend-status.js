@@ -1,11 +1,16 @@
 const LLAMA_BACKEND_URL = process.env.LLAMA_BACKEND_URL || "";
 
 async function checkLlamaBackend() {
+  const chatUrl = LLAMA_BACKEND_URL
+    ? new URL("/chat", LLAMA_BACKEND_URL.endsWith("/") ? LLAMA_BACKEND_URL : `${LLAMA_BACKEND_URL}/`).toString()
+    : "";
+
   if (!LLAMA_BACKEND_URL) {
     return {
       mode: "fallback",
       label: "Serverless Fallback Demo",
-      detail: "LLaMA backend URL is not configured."
+      detail: "LLaMA backend URL is not configured.",
+      chatUrl: ""
     };
   }
 
@@ -20,13 +25,15 @@ async function checkLlamaBackend() {
     return {
       mode: "llama",
       label: "LLaMA+LoRA Backend Online",
-      detail: data.version ? `Connected to ${data.version}` : "Connected to GPU AI backend."
+      detail: data.version ? `Connected to ${data.version}` : "Connected to GPU AI backend.",
+      chatUrl
     };
   } catch (error) {
     return {
       mode: "fallback",
       label: "Serverless Fallback Demo",
-      detail: `LLaMA backend unavailable: ${error.message}`
+      detail: `LLaMA backend unavailable: ${error.message}`,
+      chatUrl: ""
     };
   }
 }

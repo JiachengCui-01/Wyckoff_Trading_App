@@ -1428,6 +1428,7 @@
       const modelStatusDot = document.querySelector("#modelStatusDot");
       const modelStatusLabel = document.querySelector("#modelStatusLabel");
       const modelStatusDetail = document.querySelector("#modelStatusDetail");
+      let llamaChatUrl = "";
       let chartMode = "simple";
       let currentAnalysis = null;
 
@@ -1450,10 +1451,12 @@
           const data = await response.json();
           if (!response.ok) throw new Error(data.error || "Status check failed");
           const online = data.mode === "llama";
+          llamaChatUrl = online && data.chatUrl ? data.chatUrl : "";
           modelStatusDot.className = `dot ${online ? "" : "fallback"}`;
           modelStatusLabel.textContent = data.label || (online ? "LLaMA+LoRA Backend Online" : "Serverless Fallback Demo");
           modelStatusDetail.textContent = data.detail || (online ? "GPU model backend is connected." : "Using Vercel fallback mode.");
         } catch (error) {
+          llamaChatUrl = "";
           modelStatusDot.className = "dot offline";
           modelStatusLabel.textContent = "Backend Status Unknown";
           modelStatusDetail.textContent = error.message;
@@ -1532,20 +1535,38 @@
         addMessage("bot", stockQuestion ? "Analyzing stock data..." : domainQuestion ? "Analyzing Wyckoff knowledge base..." : "Thinking...");
         const pending = messages.lastElementChild;
         try {
-          const response = await fetch("/api/chat?v=chatbot-stock-skill-v2", {
-            method: "POST",
-            cache: "no-store",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ question: cleanQuestion })
-          });
-          const data = await response.json();
+          const data = await sendChat(cleanQuestion);
           pending.remove();
-          if (!response.ok) throw new Error(data.error || "Chat failed");
           addMessage("bot", data.answer);
         } catch (error) {
           pending.textContent = `Chat service error: ${error.message}`;
           scrollChatToBottom();
         }
+      }
+
+      async function sendChat(question) {
+        const payload = JSON.stringify({ question });
+        const request = async (url) => {
+          const response = await fetch(url, {
+            method: "POST",
+            cache: "no-store",
+            headers: { "Content-Type": "application/json" },
+            body: payload
+          });
+          const data = await response.json().catch(() => ({}));
+          if (!response.ok) throw new Error(data.error || `Chat failed with ${response.status}`);
+          return data;
+        };
+
+        if (llamaChatUrl) {
+          try {
+            return await request(llamaChatUrl);
+          } catch (error) {
+            console.warn("Direct LLaMA backend request failed; using Vercel fallback.", error);
+          }
+        }
+
+        return request("/api/chat?v=chatbot-stock-skill-v2");
       }
 
       document.querySelector("#chatForm").addEventListener("submit", (event) => {
