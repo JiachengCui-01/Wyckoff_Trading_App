@@ -46,7 +46,18 @@ python scripts/train_lora.py \
   --output-dir /content/drive/MyDrive/wyckoff_models/llama_wyckoff_lora
 ```
 
-Do not commit base model weights or LoRA adapter files to GitHub.
+## Chat_Bot Interface
+With LLaMA:
+<img width="975" height="528" alt="image" src="https://github.com/user-attachments/assets/4a45f6c7-5574-4beb-a801-638ee08702a6" />
+
+Without LLaMA:
+<img width="1280" height="698" alt="image" src="https://github.com/user-attachments/assets/4393e678-a94e-4c5a-97dc-5c2275deeb76" />
+
+## Stock Analysis Interface
+<img width="1280" height="697" alt="image" src="https://github.com/user-attachments/assets/446fed7e-0f66-4975-a0de-6870bf4853ed" />
+<img width="1280" height="697" alt="image" src="https://github.com/user-attachments/assets/7d1e09ac-3547-4d6b-95c3-de3e0d4af618" />
+<img width="1280" height="696" alt="image" src="https://github.com/user-attachments/assets/89222f6d-a633-437a-ad4e-65f10d3869fb" />
+<img width="1280" height="699" alt="image" src="https://github.com/user-attachments/assets/19d7e907-bd9e-45ed-aac1-e6c2b1e2efac" />
 
 ## Notes
 
